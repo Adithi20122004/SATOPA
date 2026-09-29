@@ -1,0 +1,11 @@
+{
+  "name": "ColoriCheck - Colorimetric Drug Test Analyzer",
+  "description": "Mobile-first PWA for field colorimetric drug-test kit analysis with CIELAB calibration, cryptographic audit trails, and tamper verification.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
