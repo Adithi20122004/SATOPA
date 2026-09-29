@@ -59,7 +59,7 @@ export const QualityGateModal: React.FC<QualityGateModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4">
-      <div className="w-full max-w-[420px] max-h-[92vh] bg-slate-950 border border-slate-800 rounded-2xl flex flex-col justify-between p-4 overflow-y-auto shadow-2xl">
+      <div className="w-full max-w-lg max-h-[92vh] bg-slate-950 border border-slate-800 rounded-2xl flex flex-col justify-between p-4 overflow-y-auto shadow-2xl">
       {/* Header Banner */}
       <div className="shrink-0 flex items-center justify-between pb-3 border-b border-slate-800">
         <div className="flex items-center gap-2">
@@ -77,7 +77,7 @@ export const QualityGateModal: React.FC<QualityGateModalProps> = ({
               {quality.allPassed ? 'Quality Gates Verified' : 'Quality Check Advisory'}
             </h3>
             <p className="text-[10px] text-slate-400">
-              ISO/IEC Field Vision Calibration Protocol
+              Automated Quality Checks
             </p>
           </div>
         </div>
@@ -96,7 +96,7 @@ export const QualityGateModal: React.FC<QualityGateModalProps> = ({
         <div className="my-3 p-3 bg-rose-950/40 border border-rose-500/40 rounded-xl space-y-1.5">
           <div className="flex items-center gap-1.5 text-xs font-semibold text-rose-300">
             <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
-            Recapture Required for Evidentiary Standard
+            Recapture required
           </div>
           <ul className="space-y-1 pl-5 list-disc text-[11px] text-rose-200/90 leading-tight">
             {quality.instructions.map((inst, i) => (

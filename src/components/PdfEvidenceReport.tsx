@@ -88,7 +88,7 @@ export const PdfEvidenceReport: React.FC<PdfEvidenceReportProps> = ({ record, im
               </h1>
             </div>
             <h2 className="text-xs font-bold uppercase tracking-wider text-slate-600">
-              Forensic Colorimetric Examination & Digital Chain-of-Custody Record
+              Colorimetric Examination & Digital Chain-of-Custody Record
             </h2>
             <p className="text-[11px] text-slate-500 font-mono">
               Verifiable Field Test Record • Cryptographically Signed Evidence Report
@@ -280,11 +280,11 @@ export const PdfEvidenceReport: React.FC<PdfEvidenceReportProps> = ({ record, im
           )}
         </div>
 
-        {/* Statutory Legal Disclaimer */}
+        {/* Presumptive Notice */}
         <div className="p-3 rounded-lg border border-amber-300 bg-amber-50 text-[11px] text-amber-950 space-y-1">
           <div className="font-bold flex items-center gap-1 text-amber-900">
             <AlertTriangle className="w-3.5 h-3.5 text-amber-700" />
-            Statutory Forensic Notice (NDPS Act / Directorate of Forensic Science Services)
+            Presumptive result notice
           </div>
           <p className="leading-relaxed">
             {PRESUMPTIVE_DISCLAIMER} Colorimetric field test outcomes are presumptive only and indicate the presence of chemical functional groups. This digital document constitutes a contemporaneous chain-of-custody field log and must be accompanied by seized physical samples submitted to an accredited forensic science laboratory (FSL) for confirmatory analysis (GC-MS / HPLC).

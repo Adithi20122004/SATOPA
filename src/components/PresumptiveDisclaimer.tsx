@@ -14,11 +14,11 @@ export const PresumptiveDisclaimer: React.FC<PresumptiveDisclaimerProps> = ({
   if (compact) {
     return (
       <div
-        className={`flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/10 border border-amber-500/25 rounded-md text-amber-300 text-[11px] font-medium leading-tight shrink-0 shadow-sm ${className}`}
+        className={`flex items-center gap-1.5 px-2.5 py-1.5 bg-amber-500/10 border border-amber-500/25 rounded-md text-amber-300 text-[11px] font-medium leading-tight shrink-0 shadow-sm ${className}`}
         title={PRESUMPTIVE_DISCLAIMER}
       >
         <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-amber-400" />
-        <span className="truncate">{PRESUMPTIVE_DISCLAIMER}</span>
+        <span className="leading-snug">{PRESUMPTIVE_DISCLAIMER}</span>
       </div>
     );
   }
@@ -30,7 +30,7 @@ export const PresumptiveDisclaimer: React.FC<PresumptiveDisclaimerProps> = ({
       <AlertTriangle className="w-4 h-4 shrink-0 text-amber-400 mt-0.5" />
       <div className="space-y-0.5">
         <p className="font-semibold text-amber-300 tracking-wide uppercase text-[10px]">
-          Statutory Evidentiary Notice
+          Presumptive result notice
         </p>
         <p className="leading-relaxed">
           {PRESUMPTIVE_DISCLAIMER}

@@ -187,7 +187,7 @@ export const ClassificationExplanationView: React.FC<ClassificationExplanationVi
   }[outcome];
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 space-y-4 max-w-lg mx-auto w-full pb-8">
+    <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 max-w-3xl lg:max-w-4xl mx-auto w-full pb-10">
       {/* Top Navigation */}
       <div className="flex items-center justify-between">
         <button
@@ -244,7 +244,7 @@ export const ClassificationExplanationView: React.FC<ClassificationExplanationVi
             <span className="font-bold text-rose-300 block">EXPIRED REAGENT LOT WARNING</span>
             <span>
               Kit Lot {kit.lotNumber} expired on {kit.expiryDate}. Chemical color change may have
-              degraded. Confirmatory forensic laboratory test required.
+              degraded. Confirmatory laboratory test required.
             </span>
           </div>
         </div>

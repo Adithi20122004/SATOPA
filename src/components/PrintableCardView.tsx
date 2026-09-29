@@ -303,7 +303,7 @@ export const PrintableCardView: React.FC = () => {
             {/* Footer Notice */}
             <g id="footer" textAnchor="middle" fontFamily="sans-serif">
               <text x={CARD_WIDTH / 2} y="815" fontSize="8" fontWeight="600" fill="#475569">
-                PRESUMPTIVE FIELD TESTING SYSTEM • FORENSIC CALIBRATION REFERENCE
+                PRESUMPTIVE FIELD TESTING SYSTEM • FIELD CALIBRATION REFERENCE
               </text>
               <text x={CARD_WIDTH / 2} y="828" fontSize="7" fill="#64748B">
                 Do not laminate with high-gloss film to avoid specular reflection.
