@@ -8,10 +8,15 @@ import {
   Settings,
   Shield
 } from 'lucide-react';
-import type { AppTab, KitProfile, CapturedFrame } from './types';
+import type { AppTab, KitProfile, CapturedFrame, QualityGateResult } from './types';
 import { DEFAULT_KIT_PROFILES } from './data/defaultKits';
 import { CameraCaptureView } from './components/CameraCaptureView';
 import { PresumptiveDisclaimer } from './components/PresumptiveDisclaimer';
+import { PrintableCardView } from './components/PrintableCardView';
+import { QualityGateModal } from './components/QualityGateModal';
+import { processCardCapture } from './vision/cardDetector';
+import type { CardDetectionResult } from './vision/cardDetector';
+import { evaluateQualityGates } from './vision/qualityGates';
 
 export function App() {
   const [currentTab, setCurrentTab] = useState<AppTab>('capture');
@@ -20,6 +25,8 @@ export function App() {
   const [kitProfiles] = useState<KitProfile[]>(DEFAULT_KIT_PROFILES);
   const [selectedKitId, setSelectedKitId] = useState<string>(DEFAULT_KIT_PROFILES[0].id);
   const [capturedFrame, setCapturedFrame] = useState<CapturedFrame | null>(null);
+  const [cardResult, setCardResult] = useState<CardDetectionResult | null>(null);
+  const [qualityResult, setQualityResult] = useState<QualityGateResult | null>(null);
 
   // Initialize or retrieve persistent pseudonymous device ID
   useEffect(() => {
@@ -35,6 +42,31 @@ export function App() {
 
   const handleFrameCaptured = (frame: CapturedFrame) => {
     setCapturedFrame(frame);
+
+    // Compute central guideline box based on frame aspect ratio
+    const boxW = Math.round(frame.width * 0.65);
+    const boxH = Math.round(boxW * 1.414);
+    const boxX = Math.round((frame.width - boxW) / 2);
+    const boxY = Math.round((frame.height - boxH) / 2);
+    const guidelineBox = { x: Math.max(0, boxX), y: Math.max(0, boxY), w: boxW, h: Math.min(boxH, frame.height) };
+
+    const detected = processCardCapture(frame.imageData, guidelineBox);
+    setCardResult(detected);
+
+    const quality = evaluateQualityGates({
+      cardDetected: detected.cardDetected,
+      corners: detected.corners,
+      imageData: frame.imageData,
+      cardRect: guidelineBox,
+      resultWindowRect: detected.resultRegion?.rect,
+    });
+    setQualityResult(quality);
+  };
+
+  const handleRetake = () => {
+    setCapturedFrame(null);
+    setCardResult(null);
+    setQualityResult(null);
   };
 
   return (
@@ -77,31 +109,7 @@ export function App() {
           />
         )}
 
-        {currentTab === 'card' && (
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 max-w-lg mx-auto w-full">
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="text-base font-bold text-white flex items-center gap-2">
-                  <Printer className="w-5 h-5 text-sky-400" />
-                  Printable A6 Reference Card
-                </h2>
-                <span className="text-xs bg-slate-800 px-2 py-0.5 rounded text-slate-300 font-mono">
-                  105 × 148 mm
-                </span>
-              </div>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Field kit calibration requires 4 ArUco markers (IDs 0–3) and standardized patches
-                (White, Grey, Black, R, G, B, C, M, Y) around the reaction tube window.
-              </p>
-              
-              <div className="bg-slate-950 border border-slate-800 rounded-lg p-3 text-center">
-                <p className="text-xs text-amber-300 font-medium">
-                  Reference Card Generator will be fully rendered here in Phase 2.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
+        {currentTab === 'card' && <PrintableCardView />}
 
         {currentTab === 'log' && (
           <div className="flex-1 overflow-y-auto p-4 space-y-4 max-w-lg mx-auto w-full">
@@ -231,55 +239,18 @@ export function App() {
         )}
       </main>
 
-      {/* Captured Frame Review Modal (Phase 1 basic preview, Phase 2 quality check) */}
-      {capturedFrame && (
-        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex flex-col justify-between p-4 max-w-md mx-auto">
-          <div className="flex items-center justify-between text-slate-200">
-            <h3 className="text-sm font-bold flex items-center gap-1.5">
-              <Camera className="w-4 h-4 text-sky-400" />
-              Captured Frame
-            </h3>
-            <button
-              onClick={() => setCapturedFrame(null)}
-              className="text-xs bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded text-slate-300 font-medium"
-            >
-              Retake
-            </button>
-          </div>
-
-          <div className="relative my-auto rounded-lg overflow-hidden border border-slate-800 shadow-xl max-h-[70vh]">
-            <img
-              src={capturedFrame.dataUrl}
-              alt="Field Capture"
-              className="w-full h-auto object-contain max-h-[65vh]"
-            />
-            <div className="absolute bottom-2 left-2 right-2 bg-black/75 backdrop-blur px-2.5 py-1.5 rounded text-[11px] font-mono text-slate-300 flex justify-between">
-              <span>{capturedFrame.width} × {capturedFrame.height}px</span>
-              <span>{new Date(capturedFrame.timestamp).toLocaleTimeString()}</span>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <PresumptiveDisclaimer compact />
-            <div className="flex gap-2">
-              <button
-                onClick={() => setCapturedFrame(null)}
-                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg text-center"
-              >
-                Discard & Retake
-              </button>
-              <button
-                onClick={() => {
-                  alert('Phase 1 Live Camera verified! Frame captured at ' + capturedFrame.width + 'x' + capturedFrame.height + ' resolution.');
-                  setCapturedFrame(null);
-                }}
-                className="flex-1 py-2.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold rounded-lg text-center shadow-lg shadow-sky-600/30"
-              >
-                Proceed to Analysis
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Quality Gate Verification Modal (Phase 2) */}
+      {capturedFrame && qualityResult && (
+        <QualityGateModal
+          frame={capturedFrame}
+          quality={qualityResult}
+          cardResult={cardResult}
+          onRetake={handleRetake}
+          onProceed={() => {
+            alert('Phase 2 Quality Gates & Perspective Calibration verified! 9 patches and result window extracted.');
+            handleRetake();
+          }}
+        />
       )}
 
       {/* Bottom Navigation Tab Bar */}
