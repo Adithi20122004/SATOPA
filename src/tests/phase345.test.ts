@@ -30,7 +30,7 @@ describe('Phase 3, 4, 5 Cryptographic, Tamper Evident, and Classifier Tests', ()
   });
 
   it('computes accurate SHA-256 digests', async () => {
-    const text = 'SIH2026-MHA-DRUG-TEST-COMPANION';
+    const text = 'SATOPA-FIELD-DRUG-TEST-COMPANION';
     const hash1 = await sha256Hex(text);
     const hash2 = await sha256Hex(text);
 
@@ -54,16 +54,16 @@ describe('Phase 3, 4, 5 Cryptographic, Tamper Evident, and Classifier Tests', ()
         accuracy: 8.5,
         low_accuracy_flag: false,
       },
-      operator_id: 'OFFICER-4821',
+      operator_id: 'OP-4821',
       device_id: 'DEV-XYZ123',
-      app_version: '1.0.0-SIH26231',
+      app_version: '1.0.0',
       kit_profile: {
         id: 'marquis-standard-2026',
         name: 'Marquis Reagent',
         lot_number: 'MQ-2026-X04',
         expiry_date: '2026-12-31',
       },
-      case_reference: 'NDPS-CASE-401',
+      case_reference: 'CASE-2026-0401',
       outcome: 'POSITIVE',
       confidence: 94,
       calibration_score: 0.042,
@@ -95,9 +95,9 @@ describe('Phase 3, 4, 5 Cryptographic, Tamper Evident, and Classifier Tests', ()
       record_id: '22222222-3333-4444-5555-666666666666',
       timestamp_utc: '2026-09-29T21:05:00.000Z',
       gps: { latitude: 19.076, longitude: 72.8777, accuracy: 5.0, low_accuracy_flag: false },
-      operator_id: 'OFFICER-9912',
+      operator_id: 'OP-9912',
       device_id: 'DEV-ABC789',
-      app_version: '1.0.0-SIH26231',
+      app_version: '1.0.0',
       kit_profile: {
         id: 'marquis-standard-2026',
         name: 'Marquis Reagent',

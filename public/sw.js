@@ -1,5 +1,5 @@
-// Service Worker for MHA Field Companion PWA
-const CACHE_NAME = 'mha-companion-v1';
+// Service Worker for SATOPA PWA
+const CACHE_NAME = 'satopa-v1';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',

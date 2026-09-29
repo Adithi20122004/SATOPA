@@ -52,19 +52,25 @@ export function useGeolocation() {
   }, [updatePosition, handleError]);
 
   useEffect(() => {
-    requestLocation();
+    const timer = setTimeout(() => {
+      requestLocation();
+    }, 0);
 
+    let watchId: number | undefined;
     if ('geolocation' in navigator) {
-      const watchId = navigator.geolocation.watchPosition(updatePosition, handleError, {
+      watchId = navigator.geolocation.watchPosition(updatePosition, handleError, {
         enableHighAccuracy: true,
         timeout: 15000,
         maximumAge: 5000,
       });
-
-      return () => {
-        navigator.geolocation.clearWatch(watchId);
-      };
     }
+
+    return () => {
+      clearTimeout(timer);
+      if (watchId !== undefined && 'geolocation' in navigator) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+    };
   }, [requestLocation, updatePosition, handleError]);
 
   // Formatted display string for header or audit display

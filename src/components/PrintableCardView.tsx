@@ -7,6 +7,7 @@ import {
   REFERENCE_PATCHES,
   RESULT_WINDOW_RECT,
 } from '../vision/referenceCard';
+import { PRODUCT_NAME, PRODUCT_TAGLINE } from '../types';
 
 export const PrintableCardView: React.FC = () => {
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -22,7 +23,7 @@ export const PrintableCardView: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'MHA_Field_Drug_Test_Calibration_Card_A6.svg';
+    link.download = `${PRODUCT_NAME}_Calibration_Card_A6.svg`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -48,7 +49,7 @@ export const PrintableCardView: React.FC = () => {
         const pngUrl = canvas.toDataURL('image/png');
         const link = document.createElement('a');
         link.href = pngUrl;
-        link.download = 'MHA_Field_Drug_Test_Calibration_Card_A6.png';
+        link.download = `${PRODUCT_NAME}_Calibration_Card_A6.png`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -72,9 +73,6 @@ export const PrintableCardView: React.FC = () => {
               A6 Standard Format (105 × 148 mm) for Colorimetric Drug Test Verification
             </p>
           </div>
-          <span className="text-[10px] font-mono bg-sky-500/20 text-sky-300 border border-sky-500/30 px-2 py-0.5 rounded">
-            SIH26231
-          </span>
         </div>
 
         {/* Action Buttons */}
@@ -125,13 +123,13 @@ export const PrintableCardView: React.FC = () => {
               strokeDasharray="4 2"
             />
 
-            {/* MHA Header */}
+            {/* Header */}
             <g id="header" textAnchor="middle">
               <text x={CARD_WIDTH / 2} y="45" fontSize="13" fontWeight="bold" fill="#0F172A" fontFamily="sans-serif">
-                MINISTRY OF HOME AFFAIRS • GOVT. OF INDIA
+                {PRODUCT_NAME} • {PRODUCT_TAGLINE.toUpperCase()}
               </text>
               <text x={CARD_WIDTH / 2} y="62" fontSize="10" fontWeight="600" fill="#475569" fontFamily="sans-serif">
-                SIH26231 • FIELD DRUG TEST CALIBRATION CARD (A6)
+                FIELD DRUG TEST CALIBRATION REFERENCE CARD (A6)
               </text>
               <line x1="140" y1="72" x2={CARD_WIDTH - 140} y2="72" stroke="#94A3B8" strokeWidth="1" />
             </g>
@@ -305,7 +303,7 @@ export const PrintableCardView: React.FC = () => {
             {/* Footer Notice */}
             <g id="footer" textAnchor="middle" fontFamily="sans-serif">
               <text x={CARD_WIDTH / 2} y="815" fontSize="8" fontWeight="600" fill="#475569">
-                PRESUMPTIVE FIELD TESTING SYSTEM • NDPS COMPLIANCE
+                PRESUMPTIVE FIELD TESTING SYSTEM • FORENSIC CALIBRATION REFERENCE
               </text>
               <text x={CARD_WIDTH / 2} y="828" fontSize="7" fill="#64748B">
                 Do not laminate with high-gloss film to avoid specular reflection.
@@ -319,7 +317,7 @@ export const PrintableCardView: React.FC = () => {
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-2 text-xs text-slate-300">
         <div className="flex items-center gap-1.5 text-sky-400 font-semibold">
           <Info className="w-4 h-4" />
-          Field Officer Usage Instructions
+          Field Operator Usage Instructions
         </div>
         <ul className="space-y-1.5 list-disc list-inside text-slate-400 text-[11px] leading-relaxed">
           <li>Print on standard A6 cardstock (or A4 cut into 4 sheets) with standard matte finish.</li>

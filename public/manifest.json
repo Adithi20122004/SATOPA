@@ -1,7 +1,7 @@
 {
-  "short_name": "MHA Field Companion",
-  "name": "MHA Field Companion - Drug Test Kit Analyzer",
-  "description": "Mobile-first PWA for field colorimetric drug-test kit analysis with CIELAB calibration, cryptographic audit trails, and tamper verification.",
+  "short_name": "SATOPA",
+  "name": "SATOPA - Verifiable field-test records",
+  "description": "Verifiable field-test records. Field colorimetric drug-test kit analysis with CIELAB calibration, cryptographic audit trails, and independent verification.",
   "icons": [
     {
       "src": "/favicon.svg",
@@ -11,7 +11,7 @@
     }
   ],
   "start_url": "/",
-  "background_color": "#020617",
+  "background_color": "#0f172a",
   "theme_color": "#0f172a",
   "display": "standalone",
   "orientation": "portrait"

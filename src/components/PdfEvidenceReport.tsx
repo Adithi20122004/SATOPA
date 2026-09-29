@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Printer, ArrowLeft, ShieldCheck, MapPin, AlertTriangle } from 'lucide-react';
 import { QRCode } from '../utils/qrCode';
 import type { SignedRecord } from '../types';
-import { PRESUMPTIVE_DISCLAIMER } from '../types';
+import { PRESUMPTIVE_DISCLAIMER, PRODUCT_NAME, PRODUCT_TAGLINE } from '../types';
 import { computeRecordChainHash } from '../crypto/recordCrypto';
 
 interface PdfEvidenceReportProps {
@@ -78,20 +78,20 @@ export const PdfEvidenceReport: React.FC<PdfEvidenceReportProps> = ({ record, im
         id="printable-evidence-report"
         className="w-full max-w-3xl bg-white text-slate-900 rounded-xl shadow-2xl p-6 sm:p-8 space-y-6 print:p-0 print:shadow-none print:rounded-none print:w-full"
       >
-        {/* Government / Institutional Header */}
+        {/* Header */}
         <div className="border-b-2 border-slate-900 pb-4 flex items-start justify-between">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <span className="w-3 h-3 rounded-full bg-sky-600" />
               <h1 className="text-lg font-black tracking-tight uppercase text-slate-950">
-                Ministry of Home Affairs • Field Drug Testing Wing
+                {PRODUCT_NAME} • {PRODUCT_TAGLINE.toUpperCase()}
               </h1>
             </div>
             <h2 className="text-xs font-bold uppercase tracking-wider text-slate-600">
               Forensic Colorimetric Examination & Digital Chain-of-Custody Record
             </h2>
             <p className="text-[11px] text-slate-500 font-mono">
-              NDPS Act Statutory Compliance Report • Digital Companion Module (SIH26231)
+              Verifiable Field Test Record • Cryptographically Signed Evidence Report
             </p>
           </div>
 
@@ -112,7 +112,7 @@ export const PdfEvidenceReport: React.FC<PdfEvidenceReportProps> = ({ record, im
               {record.case_reference || 'N/A (Standard Field Check)'}
             </span>
             <div className="text-[11px] text-slate-600">
-              Officer: <span className="font-semibold text-slate-800">{record.operator_id}</span>
+              Operator: <span className="font-semibold text-slate-800">{record.operator_id}</span>
             </div>
             <div className="text-[10px] text-slate-500 font-mono">
               Device: {record.device_id}

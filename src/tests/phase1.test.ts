@@ -3,7 +3,7 @@ import { PRESUMPTIVE_DISCLAIMER } from '../types';
 import { DEFAULT_KIT_PROFILES } from '../data/defaultKits';
 
 describe('Phase 1 Foundation & Regulatory Compliance Tests', () => {
-  it('strictly enforces the MHA presumptive testing disclaimer', () => {
+  it('strictly enforces the presumptive testing disclaimer', () => {
     expect(PRESUMPTIVE_DISCLAIMER).toBe(
       'PRESUMPTIVE result and supporting record; it does not replace laboratory confirmatory testing.'
     );

@@ -58,7 +58,8 @@ export const QualityGateModal: React.FC<QualityGateModalProps> = ({
   }, [cardResult]);
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex flex-col justify-between p-4 max-w-lg mx-auto overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4">
+      <div className="w-full max-w-[420px] max-h-[92vh] bg-slate-950 border border-slate-800 rounded-2xl flex flex-col justify-between p-4 overflow-y-auto shadow-2xl">
       {/* Header Banner */}
       <div className="shrink-0 flex items-center justify-between pb-3 border-b border-slate-800">
         <div className="flex items-center gap-2">
@@ -298,5 +299,6 @@ export const QualityGateModal: React.FC<QualityGateModalProps> = ({
         </div>
       </div>
     </div>
+  </div>
   );
 };

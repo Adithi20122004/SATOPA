@@ -61,11 +61,35 @@ export function analyzeTestResult(
   const todayIso = new Date().toISOString().split('T')[0];
   const isExpiredKit = kit.expiryDate < todayIso;
 
-  // 6. Calculate CIEDE2000 distance to each kit outcome class
+  const classificationResult = classifyLabDirectly(
+    calibratedLab,
+    kit,
+    quality.allPassed,
+    quality.instructions
+  );
+  classificationResult.isExpiredKit = isExpiredKit;
+
+  return {
+    calibration: calibrationResult,
+    classification: classificationResult,
+    rawLab,
+    calibratedLab,
+  };
+}
+
+/**
+ * Direct classification of a measured Lab coordinate using the real kit profile rules
+ */
+export function classifyLabDirectly(
+  lab: Lab,
+  kit: KitProfile,
+  qualityPassed: boolean = true,
+  qualityInstructions: string[] = []
+): ClassificationResult {
   const classDistances = kit.classes.map((cls) => ({
     className: cls.name,
     description: cls.description,
-    deltaE00: Math.round(deltaE00(calibratedLab, cls.expectedLab) * 10) / 10,
+    deltaE00: Math.round(deltaE00(lab, cls.expectedLab) * 10) / 10,
   }));
 
   // Sort by ascending distance (closest match first)
@@ -75,16 +99,16 @@ export function analyzeTestResult(
   const runnerUp = classDistances.length > 1 ? classDistances[1] : null;
   const runnerUpMargin = runnerUp ? Math.round((runnerUp.deltaE00 - top.deltaE00) * 10) / 10 : 99.0;
 
-  // 7. Abstain-First Classification Rule
+  // Abstain-First Classification Rule
   let outcome: 'POSITIVE' | 'NEGATIVE' | 'INCONCLUSIVE';
   let inconclusiveReason: string | undefined;
 
   const T = kit.deltaEAcceptanceThreshold;
   const M = kit.deltaEMarginThreshold;
 
-  if (!quality.allPassed) {
+  if (!qualityPassed) {
     outcome = 'INCONCLUSIVE';
-    inconclusiveReason = `Evidentiary quality standards not met (${quality.instructions.join('; ')}).`;
+    inconclusiveReason = `Evidentiary quality standards not met (${qualityInstructions.join('; ')}).`;
   } else if (top.deltaE00 > T) {
     outcome = 'INCONCLUSIVE';
     inconclusiveReason = `Colorimetric distance to nearest class (ΔE=${top.deltaE00}) exceeds acceptance threshold (T=${T}). Unmatched spectral signature.`;
@@ -104,7 +128,7 @@ export function analyzeTestResult(
       ? Math.max(20, Math.round((1 - Math.min(top.deltaE00, T * 1.5) / (T * 1.5)) * 60))
       : Math.min(99, Math.max(50, Math.round((1 - top.deltaE00 / (T * 1.2)) * 100)));
 
-  const classificationResult: ClassificationResult = {
+  return {
     outcome,
     matchedClass: top.className,
     confidence,
@@ -112,14 +136,7 @@ export function analyzeTestResult(
     topDistance: top.deltaE00,
     runnerUpMargin,
     inconclusiveReason,
-    isExpiredKit,
+    isExpiredKit: false,
     isOutsideTimeWindow: false,
-  };
-
-  return {
-    calibration: calibrationResult,
-    classification: classificationResult,
-    rawLab,
-    calibratedLab,
   };
 }

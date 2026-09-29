@@ -1,3 +1,13 @@
+export const APP_CONFIG = {
+  name: 'SATOPA',
+  tagline: 'Verifiable field-test records',
+  version: '1.0.0',
+  sihId: 'SIH26231',
+} as const;
+
+export const PRODUCT_NAME = APP_CONFIG.name;
+export const PRODUCT_TAGLINE = APP_CONFIG.tagline;
+
 export const PRESUMPTIVE_DISCLAIMER =
   'PRESUMPTIVE result and supporting record; it does not replace laboratory confirmatory testing.';
 

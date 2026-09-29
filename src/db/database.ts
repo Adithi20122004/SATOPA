@@ -26,7 +26,7 @@ export class FieldCompanionDatabase extends Dexie {
   keys!: Table<StoredKey, string>;
 
   constructor() {
-    super('SIH26231_FieldCompanionDB');
+    super('SATOPA_FieldCompanionDB');
     this.version(1).stores({
       records: 'record_id, timestamp_utc, outcome, operator_id, [kit_profile.lot_number]',
       images: 'image_sha256, created_at',

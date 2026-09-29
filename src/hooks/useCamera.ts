@@ -249,8 +249,11 @@ export function useCamera() {
   }, []);
 
   useEffect(() => {
-    startCamera();
+    const timer = setTimeout(() => {
+      void startCamera();
+    }, 0);
     return () => {
+      clearTimeout(timer);
       stopStream();
     };
   }, [startCamera, stopStream]);

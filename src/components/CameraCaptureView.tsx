@@ -1,7 +1,6 @@
 import React, { useState, useRef } from 'react';
-import { Camera, Zap, ZapOff, RefreshCw, MapPin, ShieldAlert, Upload, Sparkles } from 'lucide-react';
+import { Camera, Zap, ZapOff, RefreshCw, ShieldAlert, Upload, Sparkles } from 'lucide-react';
 import { useCamera } from '../hooks/useCamera';
-import { useGeolocation } from '../hooks/useGeolocation';
 import { PresumptiveDisclaimer } from './PresumptiveDisclaimer';
 import type { KitProfile, CapturedFrame } from '../types';
 import { generateDemoCapturedFrame, type DemoCardType } from '../data/demoCardGenerator';
@@ -32,7 +31,6 @@ export const CameraCaptureView: React.FC<CameraCaptureViewProps> = ({
     loadFrameFromImageFile,
   } = useCamera();
 
-  const { coords, isLocating, statusText: gpsStatusText, requestLocation } = useGeolocation();
   const [isCapturing, setIsCapturing] = useState<boolean>(false);
   const [showDemoSelector, setShowDemoSelector] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -101,36 +99,9 @@ export const CameraCaptureView: React.FC<CameraCaptureViewProps> = ({
             Lot: {activeKit.lotNumber}
           </span>
         </div>
-
-        {/* GPS Pill (Clickable to retry/request) */}
-        <button
-          onClick={requestLocation}
-          title="Click to refresh GPS location"
-          className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-950/60 border border-slate-800 hover:border-slate-700 transition-colors"
-        >
-          <MapPin
-            className={`w-3.5 h-3.5 shrink-0 ${
-              coords && !coords.isLowAccuracy
-                ? 'text-emerald-400'
-                : coords?.isLowAccuracy
-                ? 'text-amber-400'
-                : 'text-rose-400'
-            }`}
-          />
-          <span
-            className={`text-[11px] font-mono truncate max-w-[190px] ${
-              coords
-                ? coords.isLowAccuracy
-                  ? 'text-amber-300'
-                  : 'text-emerald-300'
-                : isLocating
-                ? 'text-slate-400 animate-pulse'
-                : 'text-rose-400'
-            }`}
-          >
-            {gpsStatusText}
-          </span>
-        </button>
+        <span className="text-[10px] text-slate-400 font-mono">
+          Target: {activeKit.targetSubstance}
+        </span>
       </div>
 
       {/* Main Viewfinder Canvas / Video */}
@@ -358,7 +329,7 @@ export const CameraCaptureView: React.FC<CameraCaptureViewProps> = ({
         {/* Operator Badge + Shutter Button */}
         <div className="flex items-center justify-between pt-1">
           <div className="text-left">
-            <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Field Officer</span>
+            <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Operator</span>
             <span className="text-xs font-mono font-medium text-slate-200">{operatorId}</span>
           </div>
 

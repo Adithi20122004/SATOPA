@@ -1,4 +1,4 @@
-# MHA Field Companion (SIH Hackathon — Ministry of Education's Innovation Cell)
+# SATOPA — Verifiable field-test records
 ### Colorimetric Drug-Test Kit Field Companion & Tamper-Evident Forensic Verification PWA
 
 > **STATUTORY FORENSIC ADVISORY**: This mobile application produces **presumptive screening indications only**. In strict accordance with the Narcotics Drugs and Psychotropic Substances (NDPS) Act and international evidentiary standards (UNODC/ENFSI), results generated in the field do not constitute confirmatory laboratory identification and must be corroborated by certified forensic gas chromatography-mass spectrometry (GC-MS) or high-performance liquid chromatography (HPLC).
@@ -7,12 +7,12 @@
 
 ## 1. Executive Summary & Problem Statement
 
-Field narcotics enforcement officers routinely rely on presumptive chemical reagent test kits (e.g., Marquis, Mecke, Simon's, Froehde, Duquenois-Levine). However, field execution faces severe vulnerabilities:
+Field narcotics enforcement officers and forensic personnel routinely rely on presumptive chemical reagent test kits (e.g., Marquis, Mecke, Simon's, Froehde, Duquenois-Levine). However, field execution faces severe vulnerabilities:
 1. **Subjective Human Visual Bias**: Lighting variation (direct sunlight, warm street tungsten, dim warehouse lighting) distorts perception of subtle reagent color shifts.
 2. **Evidentiary Chain-of-Custody Gaps**: Paper test results are easily contested in court due to lack of tamper-evident timestamps, geographic provenance, and cryptographic seals.
-3. **Hardware Burden**: Specialized handheld spectrometers cost thousands of dollars and cannot be ubiquitously deployed to every field officer.
+3. **Hardware Burden**: Specialized handheld spectrometers cost thousands of dollars and cannot be ubiquitously deployed to every field operator.
 
-**MHA Field Companion** turns any standard smartphone camera into a calibrated forensic capture and verification terminal using an existing, zero-cost printable **A6 Reference Color Card** without requiring any proprietary hardware.
+**SATOPA** turns any standard smartphone camera into a calibrated forensic capture and verification terminal using an existing, zero-cost printable **A6 Reference Color Card** without requiring any proprietary hardware.
 
 ---
 
@@ -69,7 +69,7 @@ Field narcotics enforcement officers routinely rely on presumptive chemical reag
        |   Persistent IndexedDB Ledger |   |   Court-Ready PDF Evidence Report  |
        |  - Immediate reactive sync    |   |  - Full Image & Swatch ΔE Table    |
        |  - Instant search & filter    |   |  - Cryptographic Hashes & QR Code  |
-       |  - Continuous chain integrity |   |  - GPS, Operator, Official Notice  |
+       |  - Continuous chain integrity |   |  - GPS, Operator ID, Legal Notice  |
        +-------------------------------+   +------------------------------------+
 ```
 
@@ -78,7 +78,7 @@ Field narcotics enforcement officers routinely rely on presumptive chemical reag
 ## 3. Mathematical & Algorithmic Foundation
 
 ### A. Perspective Rectification (DLT Homography)
-When the user captures an angled photo, 4 corner ArUco markers (\#0 TL, \#1 TR, \#2 BR, \#3 BL) define quadrilateral source coordinates $P_s = \{(x_i, y_i)\}_{i=0}^3$. Using Direct Linear Transformation (DLT) with Gaussian elimination, the system calculates a $3 \times 3$ homography matrix $H$:
+When the operator captures an angled photo, 4 corner ArUco markers (#0 TL, #1 TR, #2 BR, #3 BL) define quadrilateral source coordinates $P_s = \{(x_i, y_i)\}_{i=0}^3$. Using Direct Linear Transformation (DLT) with Gaussian elimination, the system calculates a $3 \times 3$ homography matrix $H$:
 
 $$\begin{bmatrix} x_d \\ y_d \\ 1 \end{bmatrix} \sim H \begin{bmatrix} x_s \\ y_s \\ 1 \end{bmatrix}$$
 
@@ -99,7 +99,7 @@ Classification operates strictly in CIE $L^*a^*b^*$ color space using the standa
 $$\Delta E_{00} = \sqrt{\left(\frac{\Delta L'}{k_L S_L}\right)^2 + \left(\frac{\Delta C'}{k_C S_C}\right)^2 + \left(\frac{\Delta H'}{k_H S_H}\right)^2 + R_T \left(\frac{\Delta C'}{k_C S_C}\right) \left(\frac{\Delta H'}{k_H S_H}\right)}$$
 
 ### D. Abstain-First Decision Boundaries
-Unlike consumer classifiers that force an artificial guess, the system implements strict forensic abstention:
+Unlike consumer classifiers that force an artificial guess, SATOPA implements strict forensic abstention:
 - If any Quality Gate fails $\rightarrow$ **INCONCLUSIVE**
 - If top distance $\Delta E_{00} > T$ (Kit Acceptance Threshold) $\rightarrow$ **INCONCLUSIVE**
 - If separation margin between top class and runner-up class $\Delta E_{runner-up} - \Delta E_{top} < M$ (Kit Separation Margin) $\rightarrow$ **INCONCLUSIVE**
@@ -111,25 +111,26 @@ Unlike consumer classifiers that force an artificial guess, the system implement
 
 Every test result is cryptographically sealed directly on the field device:
 1. **RFC 8785 Canonical JSON Serialization**: Eliminates non-deterministic whitespace, key ordering, or Unicode variance before hashing.
-2. **Image SHA-256 Digest**: Computed directly from the raw captured pixel bytes. Changing a single pixel invalidates the record.
+2. **Image SHA-256 Digest**: Computed directly from raw captured pixel bytes. Changing a single pixel invalidates the record.
 3. **WebCrypto ECDSA P-256 Signing**: Uses non-exportable hardware-backed keypairs (`ECDSA` over curve `P-256` with SHA-256) to sign the canonical record string.
 4. **Append-Only Sequential Hash Chain**: Every record embeds the cryptographic hash of its predecessor:
    $$H_n = \text{SHA-256}(\text{Canonical}(R_n)) \quad \text{where } R_n.\text{previous\_record\_hash} = H_{n-1}$$
-   If an adversary attempts to delete, insert, or reorder records in the local ledger, the audit log immediately flags: **"Chain broken at record \#N"**.
+   If an adversary attempts to delete, insert, or reorder records in the local ledger, the audit log immediately flags: **"Chain broken at record #N"**.
 
 ---
 
 ## 5. Mobile & Field Deployment Notes
 
-- **Geolocation (GPS)**: The W3C Geolocation API requires a secure context (**HTTPS** or **localhost**). When testing in local development or deployed on HTTPS Cloud Run/Vercel, the browser prompts for location permission. If GPS is unavailable, permission is denied, or satellite fix times out, the record explicitly logs `"GPS unavailable"` rather than omitting the field.
-- **Camera Fallback**: Mobile devices preferentially activate the rear camera (`facingMode: "environment"`). Laptops and desktop webcams fall back to default video sensors. If no camera is available or permission is blocked, the interface displays an integrated gallery file uploader and a 1-click synthetic demo sample loader.
+- **Geolocation (GPS)**: The W3C Geolocation API requires a secure context (**HTTPS** or **localhost**). The header displays GPS status once ("GPS fix", "Locating...", or "GPS off") with a dedicated "Fix location" button for clear troubleshooting.
+- **Operator & Case Identification**: Uses standard formats `OP-####` (e.g. `OP-8841`) and `CASE-2026-####` (e.g. `CASE-2026-0089`).
+- **Responsive Mobile Layout**: On desktop screens, renders in a centered phone container (max 430px) for an authentic mobile-first operator workflow.
 - **PWA & Offline Capability**: Equipped with a Web App Manifest (`manifest.json`) and a cache-first Service Worker (`sw.js`), ensuring complete operational capability in remote areas without cellular connectivity.
 
 ---
 
 ## 6. Evaluation Methodology & Surrogate Benchmark
 
-The **Eval** tab executes a controlled benchmark comparing classification accuracy **WITH** vs **WITHOUT** reference card calibration across 4 distinct illuminant regimes:
+The **Eval** tab executes a controlled benchmark comparing classification accuracy **WITH** vs **WITHOUT** reference card calibration across 4 distinct illuminant regimes on a 200-sample surrogate dataset:
 1. Standard CIE D65 (Daylight)
 2. 3000K Warm Tungsten
 3. Cool White Fluorescent
@@ -139,9 +140,15 @@ The **Eval** tab executes a controlled benchmark comparing classification accura
 
 ---
 
-## 7. Development & Verification
+## 7. Project Reference & Hackathon Background
 
-### Installation & Local Run
+This project originated as solution **SIH26231** under the Smart India Hackathon initiative. The implementation complies with open standards for colorimetry, cryptography, and evidentiary chains of custody.
+
+---
+
+## 8. Development & Verification
+
+### Local Development
 ```bash
 npm install
 npm run dev
@@ -151,11 +158,6 @@ npm run dev
 ```bash
 npm test
 ```
-The test suite validates:
-- Hash chain sequencing and tamper detection
-- ECDSA P-256 signature generation and invalidation upon metadata modification
-- Quality gate thresholds (exposure, sharpness, glare)
-- INCONCLUSIVE classification rule enforcement when pointing camera at a blank surface
 
 ### Compile & Build Production Bundle
 ```bash

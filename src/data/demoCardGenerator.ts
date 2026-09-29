@@ -6,6 +6,8 @@ export type DemoCardType = 'positive_marquis' | 'negative_marquis' | 'glare_arti
 /**
  * Generates an authentic canvas-rendered captured frame simulating physical test cards or blank surfaces
  */
+import { PRODUCT_NAME } from '../types';
+
 export function generateDemoCapturedFrame(type: DemoCardType): CapturedFrame {
   const canvas = document.createElement('canvas');
   // Match standard camera frame 1280x720
@@ -153,7 +155,7 @@ export function generateDemoCapturedFrame(type: DemoCardType): CapturedFrame {
   // Card text labels
   ctx.fillStyle = '#475569';
   ctx.font = 'bold 11px sans-serif';
-  ctx.fillText('MHA COLORIMETRIC CALIBRATION CARD (A6)', cardX + 35, cardY + cardH - 18);
+  ctx.fillText(`${PRODUCT_NAME} COLORIMETRIC CALIBRATION CARD (A6)`, cardX + 35, cardY + cardH - 18);
 
   const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
   return {

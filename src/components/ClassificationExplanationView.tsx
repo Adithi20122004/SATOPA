@@ -94,7 +94,7 @@ export const ClassificationExplanationView: React.FC<ClassificationExplanationVi
           },
           operator_id: operatorId,
           device_id: deviceId,
-          app_version: '1.0.0-SIH26231',
+          app_version: '1.0.0',
           kit_profile: {
             id: kit.id,
             name: kit.name,
@@ -144,7 +144,7 @@ export const ClassificationExplanationView: React.FC<ClassificationExplanationVi
     return () => {
       isCancelled = true;
     };
-  }, [analysis, frame, kit, operatorId, deviceId, coords, quality]);
+  }, [analysis, frame, kit, operatorId, deviceId, coords, quality, caseReference, outcome, confidence, calibration.residualRmse, calibratedLab]);
 
   const handleCopy = (text: string, label: string) => {
     navigator.clipboard.writeText(text);

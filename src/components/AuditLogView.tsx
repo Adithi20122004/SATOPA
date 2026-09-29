@@ -3,9 +3,6 @@ import {
   FileText,
   Search,
   Download,
-  CheckCircle2,
-  XCircle,
-  AlertTriangle,
   ShieldCheck,
   ShieldAlert,
   MapPin,
@@ -15,14 +12,17 @@ import {
   FileJson,
   Printer,
   Sparkles,
-  RefreshCw
+  RefreshCw,
+  FolderOpen,
 } from 'lucide-react';
 import { db, exportRecordsToCsv } from '../db/database';
 import type { SignedRecord } from '../types';
+import { PRODUCT_NAME } from '../types';
 import { PresumptiveDisclaimer } from './PresumptiveDisclaimer';
 import { seedDemoRecords } from '../data/seedDemoData';
 import { computeRecordChainHash } from '../crypto/recordCrypto';
 import { PdfEvidenceReport } from './PdfEvidenceReport';
+import { StatusChip } from './StatusChip';
 
 interface AuditLogViewProps {
   onVerifyRecord: (record: SignedRecord) => void;
@@ -75,7 +75,10 @@ export const AuditLogView: React.FC<AuditLogViewProps> = ({ onVerifyRecord }) =>
   };
 
   useEffect(() => {
-    loadRecordsAndVerifyChain();
+    const run = async () => {
+      await loadRecordsAndVerifyChain();
+    };
+    void run();
   }, []);
 
   const handleSeedDemoData = async () => {
@@ -97,7 +100,7 @@ export const AuditLogView: React.FC<AuditLogViewProps> = ({ onVerifyRecord }) =>
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `MHA_Field_Drug_Test_Audit_Log_${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `${PRODUCT_NAME}_Field_Drug_Test_Audit_Log_${new Date().toISOString().split('T')[0]}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -167,16 +170,16 @@ export const AuditLogView: React.FC<AuditLogViewProps> = ({ onVerifyRecord }) =>
             <button
               onClick={handleSeedDemoData}
               disabled={isSeeding}
-              className="py-1.5 px-2.5 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-700/60 rounded-lg text-xs font-semibold flex items-center gap-1 shadow-sm disabled:opacity-50"
-              title="Insert 6 authentic sample records for demonstration"
+              className="py-1.5 px-2.5 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-700/60 rounded-lg text-xs font-semibold flex items-center gap-1 shadow-sm disabled:opacity-50 cursor-pointer"
+              title="Load sample test records"
             >
               {isSeeding ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3 text-emerald-400" />}
-              <span>Demo Data</span>
+              <span>Load sample data</span>
             </button>
             <button
               onClick={handleExportCsv}
               disabled={records.length === 0}
-              className="py-1.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-sm disabled:opacity-50"
+              className="py-1.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-sm disabled:opacity-50 cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />
               CSV
@@ -187,7 +190,7 @@ export const AuditLogView: React.FC<AuditLogViewProps> = ({ onVerifyRecord }) =>
         {/* Chain Integrity Badge */}
         {chainStatus && records.length > 0 && (
           <div
-            className={`p-2.5 rounded-lg border flex items-center justify-between text-xs ${
+            className={`p-2.5 rounded-lg border flex items-center justify-between text-xs transition-colors ${
               chainStatus.isIntact
                 ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300'
                 : 'bg-rose-950/50 border-rose-500/60 text-rose-300'
@@ -229,50 +232,55 @@ export const AuditLogView: React.FC<AuditLogViewProps> = ({ onVerifyRecord }) =>
             <button
               key={filter}
               onClick={() => setFilterOutcome(filter)}
-              className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors shrink-0 ${
+              className={`py-1 px-2.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
                 filterOutcome === filter
-                  ? 'bg-sky-500 text-slate-950 font-bold'
-                  : 'bg-slate-800 text-slate-400 hover:text-slate-200'
+                  ? 'bg-sky-600 text-white shadow'
+                  : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
               }`}
             >
-              {filter}
+              {filter === 'ALL' ? 'All Outcomes' : filter}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Mandatory Statutory Disclaimer */}
+      {/* Slim Presumptive Disclaimer Strip */}
       <PresumptiveDisclaimer compact />
 
       {/* Records List */}
       <div className="space-y-2">
         {isLoading ? (
-          <div className="text-center py-12 text-slate-500 text-xs">Loading encrypted ledger...</div>
+          <div className="text-center py-12 text-slate-500 text-xs flex items-center justify-center gap-2">
+            <RefreshCw className="w-4 h-4 animate-spin text-sky-400" />
+            <span>Loading encrypted audit ledger...</span>
+          </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-10 bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-3">
-            <FileText className="w-8 h-8 text-slate-600 mx-auto" />
-            <p className="text-xs text-slate-400">
-              {records.length === 0 ? 'No test records in local database.' : 'No records match search criteria.'}
-            </p>
+            <FolderOpen className="w-10 h-10 text-slate-600 mx-auto" />
+            <div className="space-y-1">
+              <h3 className="text-sm font-semibold text-slate-200">
+                {records.length === 0 ? 'No audit records found' : 'No records match search'}
+              </h3>
+              <p className="text-xs text-slate-400">
+                {records.length === 0
+                  ? "Run a test or tap 'Load sample data' above to populate the ledger."
+                  : 'Try adjusting your search query or outcome filters.'}
+              </p>
+            </div>
             {records.length === 0 && (
               <button
                 onClick={handleSeedDemoData}
                 disabled={isSeeding}
-                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 shadow"
+                className="mt-2 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 shadow transition-colors cursor-pointer"
               >
                 <Sparkles className="w-3.5 h-3.5" />
-                Load 6 Demo Test Records
+                <span>Load sample data</span>
               </button>
             )}
           </div>
         ) : (
           filtered.map((record) => {
             const isExpanded = expandedId === record.record_id;
-            const badgeClass = {
-              POSITIVE: 'bg-rose-500/20 text-rose-300 border-rose-500/40',
-              NEGATIVE: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
-              INCONCLUSIVE: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
-            }[record.outcome];
 
             return (
               <div
@@ -286,9 +294,7 @@ export const AuditLogView: React.FC<AuditLogViewProps> = ({ onVerifyRecord }) =>
                 >
                   <div className="space-y-1 pr-2">
                     <div className="flex items-center gap-2">
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${badgeClass}`}>
-                        {record.outcome}
-                      </span>
+                      <StatusChip status={record.outcome} size="xs" />
                       <span className="text-[10px] text-slate-400 font-mono">
                         {record.confidence}% Conf.
                       </span>
@@ -316,6 +322,9 @@ export const AuditLogView: React.FC<AuditLogViewProps> = ({ onVerifyRecord }) =>
                 {/* Expanded Details Drawer */}
                 {isExpanded && (
                   <div className="px-3.5 pb-3.5 pt-2 border-t border-slate-800 bg-slate-950/60 space-y-3 text-xs">
+                    {/* Full Banner on record detail */}
+                    <PresumptiveDisclaimer compact={false} />
+
                     <div className="grid grid-cols-2 gap-2 text-[11px]">
                       <div>
                         <span className="text-slate-500 block">Kit Reagent:</span>
@@ -326,7 +335,7 @@ export const AuditLogView: React.FC<AuditLogViewProps> = ({ onVerifyRecord }) =>
                         <span className="text-slate-200 font-mono">{record.kit_profile.lot_number}</span>
                       </div>
                       <div>
-                        <span className="text-slate-500 block">Officer ID:</span>
+                        <span className="text-slate-500 block">Operator ID:</span>
                         <span className="text-slate-200 font-mono">{record.operator_id}</span>
                       </div>
                       <div>
@@ -357,22 +366,22 @@ export const AuditLogView: React.FC<AuditLogViewProps> = ({ onVerifyRecord }) =>
                     <div className="flex gap-2 pt-1">
                       <button
                         onClick={() => onVerifyRecord(record)}
-                        className="flex-1 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5"
+                        className="flex-1 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer"
                       >
                         <ShieldCheck className="w-3.5 h-3.5" />
                         Verify in Analyzer
                       </button>
                       <button
                         onClick={() => handleOpenPdf(record)}
-                        className="py-1.5 px-3 bg-slate-800 hover:bg-slate-700 text-sky-400 border border-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1"
-                        title="Export Court Evidence PDF"
+                        className="py-1.5 px-3 bg-slate-800 hover:bg-slate-700 text-sky-400 border border-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                        title="Export Evidence PDF"
                       >
                         <Printer className="w-3.5 h-3.5" />
                         PDF
                       </button>
                       <button
                         onClick={() => handleDownloadRecordJson(record)}
-                        className="py-1.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1"
+                        className="py-1.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer"
                         title="Download JSON Record"
                       >
                         <FileJson className="w-3.5 h-3.5" />

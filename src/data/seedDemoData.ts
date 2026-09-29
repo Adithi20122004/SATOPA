@@ -2,8 +2,6 @@ import { v4 as uuidv4 } from 'uuid';
 import type { SignedRecord, KitProfile } from '../types';
 import { DEFAULT_KIT_PROFILES } from './defaultKits';
 import {
-  generateDeviceKeyPair,
-  exportPublicKeyHex,
   signRecord,
   computeRecordChainHash,
   sha256Hex,
@@ -13,7 +11,6 @@ import { db, getOrCreateDeviceKeyPair } from '../db/database';
 import { generateDemoCapturedFrame } from './demoCardGenerator';
 
 export async function seedDemoRecords(): Promise<number> {
-  const existingCount = await db.records.count();
   const keyInfo = await getOrCreateDeviceKeyPair();
 
   const marquisKit = DEFAULT_KIT_PROFILES.find((k) => k.id.includes('marquis')) || DEFAULT_KIT_PROFILES[0];
@@ -23,6 +20,7 @@ export async function seedDemoRecords(): Promise<number> {
   const now = Date.now();
   const sampleConfigs: Array<{
     caseRef: string;
+    operatorId: string;
     kit: KitProfile;
     outcome: 'POSITIVE' | 'NEGATIVE' | 'INCONCLUSIVE';
     conf: number;
@@ -30,11 +28,11 @@ export async function seedDemoRecords(): Promise<number> {
     lat: number;
     lng: number;
     acc: number;
-    hoursAgo: number;
     demoFrameType: 'positive_marquis' | 'negative_marquis' | 'blank_wall';
   }> = [
     {
-      caseRef: 'NDPS-DELHI-2026/089',
+      caseRef: 'CASE-2026-0089',
+      operatorId: 'OP-4821',
       kit: marquisKit,
       outcome: 'POSITIVE',
       conf: 95,
@@ -42,11 +40,11 @@ export async function seedDemoRecords(): Promise<number> {
       lat: 28.6139,
       lng: 77.209,
       acc: 6.2,
-      hoursAgo: 14,
       demoFrameType: 'positive_marquis',
     },
     {
-      caseRef: 'NDPS-MUMBAI-2026/142',
+      caseRef: 'CASE-2026-0142',
+      operatorId: 'OP-8841',
       kit: scottKit,
       outcome: 'POSITIVE',
       conf: 92,
@@ -54,11 +52,11 @@ export async function seedDemoRecords(): Promise<number> {
       lat: 19.076,
       lng: 72.8777,
       acc: 8.5,
-      hoursAgo: 11,
       demoFrameType: 'positive_marquis',
     },
     {
-      caseRef: 'CHECKPOST-KA-2026/033',
+      caseRef: 'CASE-2026-0033',
+      operatorId: 'OP-3920',
       kit: marquisKit,
       outcome: 'NEGATIVE',
       conf: 98,
@@ -66,11 +64,11 @@ export async function seedDemoRecords(): Promise<number> {
       lat: 12.9716,
       lng: 77.5946,
       acc: 5.0,
-      hoursAgo: 8,
       demoFrameType: 'negative_marquis',
     },
     {
-      caseRef: 'SEIZURE-PUNJAB-2026/512',
+      caseRef: 'CASE-2026-0512',
+      operatorId: 'OP-1104',
       kit: cannabinoidKit,
       outcome: 'POSITIVE',
       conf: 89,
@@ -78,11 +76,11 @@ export async function seedDemoRecords(): Promise<number> {
       lat: 31.634,
       lng: 74.8723,
       acc: 9.1,
-      hoursAgo: 5,
       demoFrameType: 'positive_marquis',
     },
     {
-      caseRef: 'SUSPECT-VEHICLE-GJ/019',
+      caseRef: 'CASE-2026-0019',
+      operatorId: 'OP-4821',
       kit: marquisKit,
       outcome: 'INCONCLUSIVE',
       conf: 44,
@@ -90,11 +88,11 @@ export async function seedDemoRecords(): Promise<number> {
       lat: 23.0225,
       lng: 72.5714,
       acc: 12.0,
-      hoursAgo: 3,
       demoFrameType: 'blank_wall',
     },
     {
-      caseRef: 'ROUTINE-ENTRY-WB-2026/007',
+      caseRef: 'CASE-2026-0007',
+      operatorId: 'OP-8841',
       kit: scottKit,
       outcome: 'NEGATIVE',
       conf: 96,
@@ -102,25 +100,31 @@ export async function seedDemoRecords(): Promise<number> {
       lat: 22.5726,
       lng: 88.3639,
       acc: 7.4,
-      hoursAgo: 1,
       demoFrameType: 'negative_marquis',
     },
   ];
 
-  // We start linking from either the latest existing record in DB, or GENESIS_HASH
+  // We start linking from either the latest existing record in DB, or GENESIS_HASH.
+  // Ensure timestamps are strictly monotonically increasing to guarantee chronological sort order
+  // matches the hash chain sequence exactly so the chain is 100% INTACT upon loading.
   let previousHash = GENESIS_HASH;
+  let baseTime = now - (sampleConfigs.length + 1) * 3600 * 1000; // start in the past if clean DB
+
   const lastRecord = await db.records.orderBy('timestamp_utc').last();
   if (lastRecord) {
     previousHash = await computeRecordChainHash(lastRecord);
+    const lastTimestamp = new Date(lastRecord.timestamp_utc).getTime();
+    baseTime = Math.max(lastTimestamp + 60000, now - (sampleConfigs.length + 1) * 60000);
   }
 
   let insertedCount = 0;
-  for (const cfg of sampleConfigs) {
+  for (let i = 0; i < sampleConfigs.length; i++) {
+    const cfg = sampleConfigs[i];
     const demoFrame = generateDemoCapturedFrame(cfg.demoFrameType);
     const imageBytes = await demoFrame.blob.arrayBuffer();
     const image_sha256 = await sha256Hex(imageBytes);
 
-    const recordTime = new Date(now - cfg.hoursAgo * 3600 * 1000).toISOString();
+    const recordTime = new Date(baseTime + (i + 1) * 300000).toISOString();
 
     const unsigned: SignedRecord = {
       record_id: uuidv4(),
@@ -132,9 +136,9 @@ export async function seedDemoRecords(): Promise<number> {
         low_accuracy_flag: false,
         status_text: `${cfg.lat.toFixed(4)}°N, ${cfg.lng.toFixed(4)}°E (±${cfg.acc}m)`,
       },
-      operator_id: 'OFFICER-4821',
-      device_id: 'MHA-DEVICE-ALPHA',
-      app_version: '1.0.0-SIH26231',
+      operator_id: cfg.operatorId,
+      device_id: 'DEV-SATOPA-01',
+      app_version: '1.0.0',
       kit_profile: {
         id: cfg.kit.id,
         name: cfg.kit.name,

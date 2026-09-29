@@ -4,8 +4,6 @@ import { evaluateQualityGates, computeExposureScore } from '../vision/qualityGat
 import { analyzeTestResult } from '../vision/classifier';
 import { DEFAULT_KIT_PROFILES } from '../data/defaultKits';
 import {
-  canonicalizeJson,
-  sha256Hex,
   generateDeviceKeyPair,
   exportPublicKeyHex,
   signRecord,
@@ -77,7 +75,7 @@ describe('Hackathon Demo Readiness & Zero-Mock Classifier Tests', () => {
       record_id: 'test-uuid-001',
       timestamp_utc: '2026-09-29T12:00:00.000Z',
       gps: { latitude: 28.6139, longitude: 77.209, accuracy: 5.0, low_accuracy_flag: false },
-      operator_id: 'OFFICER-TEST',
+      operator_id: 'OP-4821',
       device_id: 'DEV-TEST',
       app_version: '1.0.0',
       kit_profile: { id: 'k1', name: 'Marquis', lot_number: 'LOT-1', expiry_date: '2026-12-31' },
@@ -105,7 +103,7 @@ describe('Hackathon Demo Readiness & Zero-Mock Classifier Tests', () => {
     expect(await verifyRecordSignature(alteredTime)).toBe(false);
 
     // 3. Modifying operator ID fails signature
-    const alteredOp: SignedRecord = { ...signed, operator_id: 'OFFICER-IMPOSTOR' };
+    const alteredOp: SignedRecord = { ...signed, operator_id: 'OP-IMPOSTOR' };
     expect(await verifyRecordSignature(alteredOp)).toBe(false);
   });
 
@@ -114,7 +112,7 @@ describe('Hackathon Demo Readiness & Zero-Mock Classifier Tests', () => {
       record_id: 'block-0',
       timestamp_utc: '2026-09-29T10:00:00.000Z',
       gps: { latitude: 0, longitude: 0, accuracy: 5, low_accuracy_flag: false },
-      operator_id: 'OP',
+      operator_id: 'OP-1001',
       device_id: 'DEV',
       app_version: '1.0.0',
       kit_profile: { id: 'k', name: 'Kit', lot_number: 'L', expiry_date: '2026-12-31' },
