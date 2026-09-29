@@ -8,15 +8,22 @@ import {
   Settings,
   Shield
 } from 'lucide-react';
-import type { AppTab, KitProfile, CapturedFrame, QualityGateResult } from './types';
+import type { AppTab, KitProfile, CapturedFrame, QualityGateResult, SignedRecord } from './types';
 import { DEFAULT_KIT_PROFILES } from './data/defaultKits';
 import { CameraCaptureView } from './components/CameraCaptureView';
 import { PresumptiveDisclaimer } from './components/PresumptiveDisclaimer';
 import { PrintableCardView } from './components/PrintableCardView';
 import { QualityGateModal } from './components/QualityGateModal';
+import { ClassificationExplanationView } from './components/ClassificationExplanationView';
+import { AuditLogView } from './components/AuditLogView';
+import { VerificationView } from './components/VerificationView';
+import { EvaluationRunnerView } from './components/EvaluationRunnerView';
 import { processCardCapture } from './vision/cardDetector';
 import type { CardDetectionResult } from './vision/cardDetector';
 import { evaluateQualityGates } from './vision/qualityGates';
+import { analyzeTestResult } from './vision/classifier';
+import type { FullAnalysisResult } from './vision/classifier';
+import { useGeolocation } from './hooks/useGeolocation';
 
 export function App() {
   const [currentTab, setCurrentTab] = useState<AppTab>('capture');
@@ -24,9 +31,17 @@ export function App() {
   const [deviceId, setDeviceId] = useState<string>('');
   const [kitProfiles] = useState<KitProfile[]>(DEFAULT_KIT_PROFILES);
   const [selectedKitId, setSelectedKitId] = useState<string>(DEFAULT_KIT_PROFILES[0].id);
+
+  // Vision & capture pipeline state
   const [capturedFrame, setCapturedFrame] = useState<CapturedFrame | null>(null);
   const [cardResult, setCardResult] = useState<CardDetectionResult | null>(null);
   const [qualityResult, setQualityResult] = useState<QualityGateResult | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<FullAnalysisResult | null>(null);
+
+  // Selected record for Verifier tab
+  const [recordToVerify, setRecordToVerify] = useState<SignedRecord | null>(null);
+
+  const { coords } = useGeolocation();
 
   // Initialize or retrieve persistent pseudonymous device ID
   useEffect(() => {
@@ -48,7 +63,12 @@ export function App() {
     const boxH = Math.round(boxW * 1.414);
     const boxX = Math.round((frame.width - boxW) / 2);
     const boxY = Math.round((frame.height - boxH) / 2);
-    const guidelineBox = { x: Math.max(0, boxX), y: Math.max(0, boxY), w: boxW, h: Math.min(boxH, frame.height) };
+    const guidelineBox = {
+      x: Math.max(0, boxX),
+      y: Math.max(0, boxY),
+      w: boxW,
+      h: Math.min(boxH, frame.height),
+    };
 
     const detected = processCardCapture(frame.imageData, guidelineBox);
     setCardResult(detected);
@@ -63,10 +83,27 @@ export function App() {
     setQualityResult(quality);
   };
 
+  const handleProceedToAnalysis = () => {
+    if (!cardResult || !qualityResult) return;
+    const fullAnalysis = analyzeTestResult(cardResult, qualityResult, activeKit);
+    setAnalysisResult(fullAnalysis);
+  };
+
   const handleRetake = () => {
     setCapturedFrame(null);
     setCardResult(null);
     setQualityResult(null);
+    setAnalysisResult(null);
+  };
+
+  const handleRecordSaved = (_signedRecord: SignedRecord) => {
+    handleRetake();
+    setCurrentTab('log');
+  };
+
+  const handleNavigateToVerify = (record: SignedRecord) => {
+    setRecordToVerify(record);
+    setCurrentTab('verify');
   };
 
   return (
@@ -101,162 +138,135 @@ export function App() {
 
       {/* Main Content Area */}
       <main className="flex-1 relative overflow-hidden flex flex-col">
-        {currentTab === 'capture' && (
-          <CameraCaptureView
-            activeKit={activeKit}
-            onFrameCaptured={handleFrameCaptured}
+        {/* Explanation Screen Overlay (when analysis is active) */}
+        {analysisResult && capturedFrame ? (
+          <ClassificationExplanationView
+            analysis={analysisResult}
+            frame={capturedFrame}
+            kit={activeKit}
             operatorId={operatorId}
+            deviceId={deviceId}
+            coords={coords}
+            onSaved={handleRecordSaved}
+            onRetake={handleRetake}
           />
-        )}
+        ) : (
+          <>
+            {currentTab === 'capture' && (
+              <CameraCaptureView
+                activeKit={activeKit}
+                onFrameCaptured={handleFrameCaptured}
+                operatorId={operatorId}
+              />
+            )}
 
-        {currentTab === 'card' && <PrintableCardView />}
+            {currentTab === 'card' && <PrintableCardView />}
 
-        {currentTab === 'log' && (
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 max-w-lg mx-auto w-full">
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
-              <h2 className="text-base font-bold text-white flex items-center gap-2">
-                <FileText className="w-5 h-5 text-sky-400" />
-                Signed Field Audit Log
-              </h2>
-              <p className="text-xs text-slate-400">
-                IndexedDB-backed cryptographically chained records with ECDSA P-256 signatures.
-              </p>
-              <div className="bg-slate-950 border border-slate-800 rounded-lg p-6 text-center text-xs text-slate-500">
-                Records will be stored and searchable here in Phase 4 & 5.
-              </div>
-            </div>
-          </div>
-        )}
+            {currentTab === 'log' && <AuditLogView onVerifyRecord={handleNavigateToVerify} />}
 
-        {currentTab === 'verify' && (
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 max-w-lg mx-auto w-full">
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
-              <h2 className="text-base font-bold text-white flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-emerald-400" />
-                Evidence Verification & Tamper Demo
-              </h2>
-              <p className="text-xs text-slate-400">
-                Independent verification of image SHA-256 digests, ECDSA P-256 signatures, and hash chain links.
-              </p>
-              <div className="bg-slate-950 border border-slate-800 rounded-lg p-6 text-center text-xs text-slate-500">
-                Stage tamper demo and verification analyzer available in Phase 5.
-              </div>
-            </div>
-          </div>
-        )}
+            {currentTab === 'verify' && <VerificationView initialRecord={recordToVerify} />}
 
-        {currentTab === 'evaluate' && (
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 max-w-lg mx-auto w-full">
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
-              <h2 className="text-base font-bold text-white flex items-center gap-2">
-                <BarChart3 className="w-5 h-5 text-amber-400" />
-                Surrogate Accuracy Evaluation
-              </h2>
-              <p className="text-xs text-slate-400">
-                Confusion matrix & accuracy comparison WITH vs WITHOUT color card calibration.
-              </p>
-              <div className="bg-slate-950 border border-slate-800 rounded-lg p-6 text-center text-xs text-slate-500">
-                Evaluation benchmark suite available in Phase 6.
-              </div>
-            </div>
-          </div>
-        )}
+            {currentTab === 'evaluate' && <EvaluationRunnerView kit={activeKit} />}
 
-        {currentTab === 'settings' && (
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 max-w-lg mx-auto w-full">
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-4">
-              <h2 className="text-base font-bold text-white flex items-center gap-2">
-                <Settings className="w-5 h-5 text-sky-400" />
-                Field Kit & Officer Settings
-              </h2>
+            {currentTab === 'settings' && (
+              <div className="flex-1 overflow-y-auto p-4 space-y-4 max-w-lg mx-auto w-full pb-8">
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-4">
+                  <h2 className="text-base font-bold text-white flex items-center gap-2">
+                    <Settings className="w-5 h-5 text-sky-400" />
+                    Field Kit & Officer Settings
+                  </h2>
 
-              {/* Active Kit Selector */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-300 block">
-                  Select Active Colorimetric Kit
-                </label>
-                <select
-                  value={selectedKitId}
-                  onChange={(e) => setSelectedKitId(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-sky-500"
-                >
-                  {kitProfiles.map((kit) => (
-                    <option key={kit.id} value={kit.id}>
-                      {kit.name} (Lot: {kit.lotNumber})
-                    </option>
-                  ))}
-                </select>
-              </div>
+                  {/* Active Kit Selector */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-300 block">
+                      Select Active Colorimetric Kit
+                    </label>
+                    <select
+                      value={selectedKitId}
+                      onChange={(e) => setSelectedKitId(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-sky-500"
+                    >
+                      {kitProfiles.map((kit) => (
+                        <option key={kit.id} value={kit.id}>
+                          {kit.name} (Lot: {kit.lotNumber})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-              {/* Operator ID Input */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-300 block">
-                  Pseudonymous Operator ID
-                </label>
-                <input
-                  type="text"
-                  value={operatorId}
-                  onChange={(e) => setOperatorId(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 font-mono focus:outline-none focus:border-sky-500"
-                />
-              </div>
+                  {/* Operator ID Input */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-300 block">
+                      Pseudonymous Operator ID
+                    </label>
+                    <input
+                      type="text"
+                      value={operatorId}
+                      onChange={(e) => setOperatorId(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 font-mono focus:outline-none focus:border-sky-500"
+                    />
+                  </div>
 
-              {/* Device ID Display */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-300 block">
-                  Device Secure Identifier
-                </label>
-                <div className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-400 font-mono">
-                  {deviceId}
+                  {/* Device ID Display */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-300 block">
+                      Device Secure Identifier
+                    </label>
+                    <div className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-400 font-mono">
+                      {deviceId}
+                    </div>
+                  </div>
+
+                  {/* Kit Details Card */}
+                  <div className="bg-slate-950 border border-slate-800 rounded-lg p-3 space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-400">Reagent:</span>
+                      <span className="text-slate-200 font-medium">{activeKit.reagentType}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-400">Target Drug:</span>
+                      <span className="text-slate-200 font-medium">{activeKit.targetSubstance}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-400">Lot Expiry:</span>
+                      <span className="text-emerald-400 font-mono">{activeKit.expiryDate}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-400">Acceptance Threshold (T):</span>
+                      <span className="text-slate-200 font-mono">ΔE ≤ {activeKit.deltaEAcceptanceThreshold}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-400">Separation Margin (M):</span>
+                      <span className="text-slate-200 font-mono">ΔE ≥ {activeKit.deltaEMarginThreshold}</span>
+                    </div>
+                  </div>
+
+                  <PresumptiveDisclaimer />
                 </div>
               </div>
-
-              {/* Kit Details Card */}
-              <div className="bg-slate-950 border border-slate-800 rounded-lg p-3 space-y-2">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-400">Reagent:</span>
-                  <span className="text-slate-200 font-medium">{activeKit.reagentType}</span>
-                </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-400">Target Drug:</span>
-                  <span className="text-slate-200 font-medium">{activeKit.targetSubstance}</span>
-                </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-400">Lot Expiry:</span>
-                  <span className="text-emerald-400 font-mono">{activeKit.expiryDate}</span>
-                </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-400">Reading Window:</span>
-                  <span className="text-slate-200 font-mono">
-                    {activeKit.readingTimeWindowSeconds.min}s – {activeKit.readingTimeWindowSeconds.max}s
-                  </span>
-                </div>
-              </div>
-
-              <PresumptiveDisclaimer />
-            </div>
-          </div>
+            )}
+          </>
         )}
       </main>
 
-      {/* Quality Gate Verification Modal (Phase 2) */}
-      {capturedFrame && qualityResult && (
+      {/* Quality Gate Verification Modal (Step before Explanation) */}
+      {capturedFrame && qualityResult && !analysisResult && (
         <QualityGateModal
           frame={capturedFrame}
           quality={qualityResult}
           cardResult={cardResult}
           onRetake={handleRetake}
-          onProceed={() => {
-            alert('Phase 2 Quality Gates & Perspective Calibration verified! 9 patches and result window extracted.');
-            handleRetake();
-          }}
+          onProceed={handleProceedToAnalysis}
         />
       )}
 
       {/* Bottom Navigation Tab Bar */}
       <nav className="bg-slate-900 border-t border-slate-800 px-2 py-1.5 flex items-center justify-around shrink-0 z-30">
         <button
-          onClick={() => setCurrentTab('capture')}
+          onClick={() => {
+            handleRetake();
+            setCurrentTab('capture');
+          }}
           className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-lg transition-colors ${
             currentTab === 'capture'
               ? 'text-sky-400 bg-sky-500/10 font-semibold'
@@ -268,7 +278,10 @@ export function App() {
         </button>
 
         <button
-          onClick={() => setCurrentTab('card')}
+          onClick={() => {
+            handleRetake();
+            setCurrentTab('card');
+          }}
           className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-lg transition-colors ${
             currentTab === 'card'
               ? 'text-sky-400 bg-sky-500/10 font-semibold'
@@ -280,7 +293,10 @@ export function App() {
         </button>
 
         <button
-          onClick={() => setCurrentTab('log')}
+          onClick={() => {
+            handleRetake();
+            setCurrentTab('log');
+          }}
           className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-lg transition-colors ${
             currentTab === 'log'
               ? 'text-sky-400 bg-sky-500/10 font-semibold'
@@ -292,7 +308,10 @@ export function App() {
         </button>
 
         <button
-          onClick={() => setCurrentTab('verify')}
+          onClick={() => {
+            handleRetake();
+            setCurrentTab('verify');
+          }}
           className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-lg transition-colors ${
             currentTab === 'verify'
               ? 'text-sky-400 bg-sky-500/10 font-semibold'
@@ -304,7 +323,10 @@ export function App() {
         </button>
 
         <button
-          onClick={() => setCurrentTab('evaluate')}
+          onClick={() => {
+            handleRetake();
+            setCurrentTab('evaluate');
+          }}
           className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-lg transition-colors ${
             currentTab === 'evaluate'
               ? 'text-sky-400 bg-sky-500/10 font-semibold'
@@ -316,7 +338,10 @@ export function App() {
         </button>
 
         <button
-          onClick={() => setCurrentTab('settings')}
+          onClick={() => {
+            handleRetake();
+            setCurrentTab('settings');
+          }}
           className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-lg transition-colors ${
             currentTab === 'settings'
               ? 'text-sky-400 bg-sky-500/10 font-semibold'
