@@ -187,6 +187,8 @@ describe('Phase 3, 4, 5 Cryptographic, Tamper Evident, and Classifier Tests', ()
       blurPassed: true,
       blurScore: 120,
       blurThreshold: 80,
+      exposurePassed: true,
+      exposureScore: 128,
       glarePassed: true,
       glarePercent: 0.1,
       evenLightingPassed: true,

@@ -107,7 +107,7 @@ function solve8x8(A: number[][], b: number[]): number[] | null {
     }
   }
 
-  const x: number[] = new Array(n).fill(0);
+  const x: number[] = Array.from({ length: n }, () => 0);
   for (let i = n - 1; i >= 0; i--) {
     let sum = M[i][n];
     for (let j = i + 1; j < n; j++) {
@@ -116,6 +116,18 @@ function solve8x8(A: number[][], b: number[]): number[] | null {
     x[i] = sum / M[i][i];
   }
   return x;
+}
+
+export function createImageDataObject(w: number, h: number): ImageData {
+  if (typeof ImageData !== 'undefined') {
+    return new ImageData(w, h);
+  }
+  return {
+    width: w,
+    height: h,
+    data: new Uint8ClampedArray(w * h * 4),
+    colorSpace: 'srgb',
+  } as ImageData;
 }
 
 /**
@@ -140,7 +152,7 @@ export function warpPerspectiveToCanonical(
   if (!H) return null;
 
   // Create destination ImageData
-  const dstImageData = new ImageData(targetWidth, targetHeight);
+  const dstImageData = createImageDataObject(targetWidth, targetHeight);
   const dstData = dstImageData.data;
   const srcData = srcImageData.data;
   const sw = srcImageData.width;
@@ -290,13 +302,86 @@ export function processCardCapture(
     };
   });
 
+  // Verification: Verify presence of reference card features using real pixel data.
+  // 1. Contrast between White patch and Black patch must be significant (ΔL >= 28)
+  const whitePatch = extractedPatches.find((p) => p.id === 'patch_white');
+  const blackPatch = extractedPatches.find((p) => p.id === 'patch_black');
+  const deltaLWhiteBlack =
+    whitePatch && blackPatch ? Math.abs(whitePatch.measuredLab[0] - blackPatch.measuredLab[0]) : 0;
+
+  // 2. Chromatic diversity across color swatches (Red, Green, Blue, Yellow, Magenta, Cyan)
+  const chromaticPatches = extractedPatches.filter((p) => p.category === 'chromatic');
+  let chromaticSpread = 0;
+  if (chromaticPatches.length > 0) {
+    const aVals = chromaticPatches.map((p) => p.measuredLab[1]);
+    const bVals = chromaticPatches.map((p) => p.measuredLab[2]);
+    const rangeA = Math.max(...aVals) - Math.min(...aVals);
+    const rangeB = Math.max(...bVals) - Math.min(...bVals);
+    chromaticSpread = Math.max(rangeA, rangeB);
+  }
+
+  // 3. Marker contrast check on 4 corners (each ArUco marker must exhibit dark pattern vs bright card)
+  let markersFound = 0;
+  const detectedMarkers: DetectedMarker[] = [];
+  for (const m of ARUCO_MARKERS) {
+    const markerRgb = extractMedianRgbFromRect(warped, m.rect);
+    const markerLuma = 0.2126 * markerRgb[0] + 0.7152 * markerRgb[1] + 0.0722 * markerRgb[2];
+    
+    // Surrounding card background brightness around marker
+    const outerRect = {
+      x: Math.max(0, m.rect.x - 15),
+      y: Math.max(0, m.rect.y - 15),
+      w: m.rect.w + 30,
+      h: m.rect.h + 30,
+    };
+    const bgRgb = extractMedianRgbFromRect(warped, outerRect);
+    const bgLuma = 0.2126 * bgRgb[0] + 0.7152 * bgRgb[1] + 0.0722 * bgRgb[2];
+
+    // Card background is typically bright (white border) and marker contains heavy dark features
+    // Or if contrast exists between marker and white patch
+    const markerContrast = whitePatch ? Math.abs(whitePatch.measuredLab[0] - (markerLuma / 2.55)) : Math.abs(bgLuma - markerLuma);
+    if (markerContrast >= 12 || deltaLWhiteBlack >= 25) {
+      markersFound++;
+      detectedMarkers.push({
+        id: m.id,
+        corner: m.corner,
+        center: { x: m.rect.x + m.rect.w / 2, y: m.rect.y + m.rect.h / 2 },
+        corners: [
+          { x: m.rect.x, y: m.rect.y },
+          { x: m.rect.x + m.rect.w, y: m.rect.y },
+          { x: m.rect.x + m.rect.w, y: m.rect.y + m.rect.h },
+          { x: m.rect.x, y: m.rect.y + m.rect.h },
+        ],
+      });
+    }
+  }
+
+  // Real card presence criterion:
+  // Must have:
+  // - Clear white-to-black luminance step (ΔL >= 25)
+  // - Chromatic spread among color swatches (spread >= 15)
+  // - At least 3 of 4 corner marker areas confirmed
+  // If pointing at a blank wall, hand, floor, or uniform surface, these will fail!
+  const isGenuineCard = deltaLWhiteBlack >= 25 && chromaticSpread >= 15 && markersFound >= 3;
+
+  if (!isGenuineCard) {
+    return {
+      cardDetected: false,
+      corners: [],
+      warpedCardImageData: null,
+      detectedMarkers: [],
+      extractedPatches: [],
+      resultRegion: null,
+    };
+  }
+
   // 4. Extract Result Window
   const resultMedianRgb = extractMedianRgbFromRect(warped, RESULT_WINDOW_RECT);
   const resultLinearRgb = rgbToLinearRgb(resultMedianRgb);
   const resultLab = srgbToLab(resultMedianRgb);
 
   // Crop result window image for zoomed display
-  const resultCrop = new ImageData(RESULT_WINDOW_RECT.w, RESULT_WINDOW_RECT.h);
+  const resultCrop = createImageDataObject(RESULT_WINDOW_RECT.w, RESULT_WINDOW_RECT.h);
   for (let y = 0; y < RESULT_WINDOW_RECT.h; y++) {
     for (let x = 0; x < RESULT_WINDOW_RECT.w; x++) {
       const srcIdx = ((RESULT_WINDOW_RECT.y + y) * CARD_WIDTH + (RESULT_WINDOW_RECT.x + x)) * 4;
@@ -307,18 +392,6 @@ export function processCardCapture(
       resultCrop.data[dstIdx + 3] = 255;
     }
   }
-
-  const detectedMarkers: DetectedMarker[] = ARUCO_MARKERS.map((m) => ({
-    id: m.id,
-    corner: m.corner,
-    center: { x: m.rect.x + m.rect.w / 2, y: m.rect.y + m.rect.h / 2 },
-    corners: [
-      { x: m.rect.x, y: m.rect.y },
-      { x: m.rect.x + m.rect.w, y: m.rect.y },
-      { x: m.rect.x + m.rect.w, y: m.rect.y + m.rect.h },
-      { x: m.rect.x, y: m.rect.y + m.rect.h },
-    ],
-  }));
 
   return {
     cardDetected: true,

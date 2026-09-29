@@ -7,15 +7,22 @@ import {
   XCircle,
   AlertTriangle,
   ShieldCheck,
+  ShieldAlert,
   MapPin,
   Clock,
   ChevronDown,
   ChevronUp,
-  FileJson
+  FileJson,
+  Printer,
+  Sparkles,
+  RefreshCw
 } from 'lucide-react';
 import { db, exportRecordsToCsv } from '../db/database';
 import type { SignedRecord } from '../types';
 import { PresumptiveDisclaimer } from './PresumptiveDisclaimer';
+import { seedDemoRecords } from '../data/seedDemoData';
+import { computeRecordChainHash } from '../crypto/recordCrypto';
+import { PdfEvidenceReport } from './PdfEvidenceReport';
 
 interface AuditLogViewProps {
   onVerifyRecord: (record: SignedRecord) => void;
@@ -27,12 +34,39 @@ export const AuditLogView: React.FC<AuditLogViewProps> = ({ onVerifyRecord }) =>
   const [filterOutcome, setFilterOutcome] = useState<'ALL' | 'POSITIVE' | 'NEGATIVE' | 'INCONCLUSIVE'>('ALL');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isSeeding, setIsSeeding] = useState<boolean>(false);
+  const [chainStatus, setChainStatus] = useState<{ isIntact: boolean; count: number; brokenIndex?: number } | null>(
+    null
+  );
+  const [pdfRecord, setPdfRecord] = useState<{ record: SignedRecord; imageUrl?: string } | null>(null);
 
-  const loadRecords = async () => {
+  const loadRecordsAndVerifyChain = async () => {
     setIsLoading(true);
     try {
       const all = await db.records.orderBy('timestamp_utc').reverse().toArray();
       setRecords(all);
+
+      // Verify chain integrity in chronological order (oldest to newest)
+      const chronological = [...all].reverse();
+      let brokenIdx: number | undefined = undefined;
+
+      for (let i = 0; i < chronological.length; i++) {
+        const cur = chronological[i];
+        if (i === 0) {
+          continue;
+        }
+        const expectedPrevHash = await computeRecordChainHash(chronological[i - 1]);
+        if (cur.previous_record_hash !== expectedPrevHash) {
+          brokenIdx = i + 1; // 1-indexed record number
+          break;
+        }
+      }
+
+      setChainStatus({
+        isIntact: brokenIdx === undefined,
+        count: all.length,
+        brokenIndex: brokenIdx,
+      });
     } catch (e) {
       console.error('Failed to load audit records:', e);
     } finally {
@@ -41,8 +75,21 @@ export const AuditLogView: React.FC<AuditLogViewProps> = ({ onVerifyRecord }) =>
   };
 
   useEffect(() => {
-    loadRecords();
+    loadRecordsAndVerifyChain();
   }, []);
+
+  const handleSeedDemoData = async () => {
+    if (isSeeding) return;
+    setIsSeeding(true);
+    try {
+      await seedDemoRecords();
+      await loadRecordsAndVerifyChain();
+    } catch (err) {
+      console.error('Failed to seed demo records:', err);
+    } finally {
+      setIsSeeding(false);
+    }
+  };
 
   const handleExportCsv = async () => {
     const csv = await exportRecordsToCsv();
@@ -68,6 +115,19 @@ export const AuditLogView: React.FC<AuditLogViewProps> = ({ onVerifyRecord }) =>
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+  };
+
+  const handleOpenPdf = async (record: SignedRecord) => {
+    let imgUrl: string | undefined = undefined;
+    try {
+      const img = await db.images.get(record.image_sha256);
+      if (img?.blob) {
+        imgUrl = URL.createObjectURL(img.blob);
+      }
+    } catch (e) {
+      console.warn('Could not load cached image blob for PDF:', e);
+    }
+    setPdfRecord({ record, imageUrl: imgUrl });
   };
 
   // Filter records
@@ -103,15 +163,53 @@ export const AuditLogView: React.FC<AuditLogViewProps> = ({ onVerifyRecord }) =>
               {records.length} Hash-Chained Records • ECDSA P-256 Protected
             </p>
           </div>
-          <button
-            onClick={handleExportCsv}
-            disabled={records.length === 0}
-            className="py-1.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-sm disabled:opacity-50"
-          >
-            <Download className="w-3.5 h-3.5" />
-            CSV
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={handleSeedDemoData}
+              disabled={isSeeding}
+              className="py-1.5 px-2.5 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-700/60 rounded-lg text-xs font-semibold flex items-center gap-1 shadow-sm disabled:opacity-50"
+              title="Insert 6 authentic sample records for demonstration"
+            >
+              {isSeeding ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3 text-emerald-400" />}
+              <span>Demo Data</span>
+            </button>
+            <button
+              onClick={handleExportCsv}
+              disabled={records.length === 0}
+              className="py-1.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-sm disabled:opacity-50"
+            >
+              <Download className="w-3.5 h-3.5" />
+              CSV
+            </button>
+          </div>
         </div>
+
+        {/* Chain Integrity Badge */}
+        {chainStatus && records.length > 0 && (
+          <div
+            className={`p-2.5 rounded-lg border flex items-center justify-between text-xs ${
+              chainStatus.isIntact
+                ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300'
+                : 'bg-rose-950/50 border-rose-500/60 text-rose-300'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              {chainStatus.isIntact ? (
+                <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+              ) : (
+                <ShieldAlert className="w-4 h-4 text-rose-400 shrink-0" />
+              )}
+              <span className="font-semibold">
+                {chainStatus.isIntact
+                  ? `Chain intact (${chainStatus.count} records)`
+                  : `Chain broken at record #${chainStatus.brokenIndex}`}
+              </span>
+            </div>
+            <span className="text-[10px] font-mono opacity-80">
+              {chainStatus.isIntact ? 'Unbroken Hash Links' : 'Tamper Alert'}
+            </span>
+          </div>
+        )}
 
         {/* Search Input */}
         <div className="relative">
@@ -143,61 +241,61 @@ export const AuditLogView: React.FC<AuditLogViewProps> = ({ onVerifyRecord }) =>
         </div>
       </div>
 
+      {/* Mandatory Statutory Disclaimer */}
       <PresumptiveDisclaimer compact />
 
-      {/* Record List */}
-      <div className="space-y-3">
+      {/* Records List */}
+      <div className="space-y-2">
         {isLoading ? (
-          <div className="text-center py-8 text-xs text-slate-500">Loading audit records...</div>
+          <div className="text-center py-12 text-slate-500 text-xs">Loading encrypted ledger...</div>
         ) : filtered.length === 0 ? (
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-8 text-center space-y-2">
+          <div className="text-center py-10 bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-3">
             <FileText className="w-8 h-8 text-slate-600 mx-auto" />
-            <p className="text-xs text-slate-400 font-medium">No audit records found</p>
-            <p className="text-[11px] text-slate-600">
-              Run a test from the Test tab to generate a cryptographically signed field record.
+            <p className="text-xs text-slate-400">
+              {records.length === 0 ? 'No test records in local database.' : 'No records match search criteria.'}
             </p>
+            {records.length === 0 && (
+              <button
+                onClick={handleSeedDemoData}
+                disabled={isSeeding}
+                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 shadow"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                Load 6 Demo Test Records
+              </button>
+            )}
           </div>
         ) : (
           filtered.map((record) => {
             const isExpanded = expandedId === record.record_id;
-            const outcomeBadge = {
-              POSITIVE: { bg: 'bg-rose-500/20 text-rose-300 border-rose-500/30', icon: XCircle },
-              NEGATIVE: { bg: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30', icon: CheckCircle2 },
-              INCONCLUSIVE: { bg: 'bg-amber-500/20 text-amber-300 border-amber-500/30', icon: AlertTriangle },
+            const badgeClass = {
+              POSITIVE: 'bg-rose-500/20 text-rose-300 border-rose-500/40',
+              NEGATIVE: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
+              INCONCLUSIVE: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
             }[record.outcome];
-            const OutcomeIcon = outcomeBadge.icon;
 
             return (
               <div
                 key={record.record_id}
-                className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden transition-all shadow-sm"
+                className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden hover:border-slate-700 transition-all"
               >
-                {/* Main Card Header */}
+                {/* Header Row (Click to Expand) */}
                 <div
                   onClick={() => setExpandedId(isExpanded ? null : record.record_id)}
-                  className="p-3.5 cursor-pointer hover:bg-slate-800/40 transition-colors flex items-start justify-between gap-3"
+                  className="p-3.5 flex items-start justify-between cursor-pointer select-none"
                 >
-                  <div className="space-y-1.5 min-w-0">
+                  <div className="space-y-1 pr-2">
                     <div className="flex items-center gap-2">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border flex items-center gap-1 ${outcomeBadge.bg}`}>
-                        <OutcomeIcon className="w-3 h-3" />
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${badgeClass}`}>
                         {record.outcome}
                       </span>
                       <span className="text-[10px] text-slate-400 font-mono">
                         {record.confidence}% Conf.
                       </span>
-                      {record.signature_der_hex && (
-                        <span className="text-[9px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.2 rounded flex items-center gap-0.5">
-                          <ShieldCheck className="w-3 h-3" />
-                          Signed
-                        </span>
-                      )}
                     </div>
-
                     <h4 className="text-xs font-bold text-white truncate">
                       {record.case_reference || `Record #${record.record_id.slice(0, 8)}`}
                     </h4>
-
                     <div className="flex items-center gap-3 text-[10px] text-slate-400 font-mono">
                       <span className="flex items-center gap-1">
                         <Clock className="w-3 h-3 text-slate-500" />
@@ -205,7 +303,7 @@ export const AuditLogView: React.FC<AuditLogViewProps> = ({ onVerifyRecord }) =>
                       </span>
                       <span className="flex items-center gap-1">
                         <MapPin className="w-3 h-3 text-slate-500" />
-                        ±{record.gps.accuracy}m
+                        {record.gps.status_text || `±${record.gps.accuracy}m`}
                       </span>
                     </div>
                   </div>
@@ -255,7 +353,7 @@ export const AuditLogView: React.FC<AuditLogViewProps> = ({ onVerifyRecord }) =>
                       </div>
                     </div>
 
-                    {/* Actions */}
+                    {/* Actions: Verify in Analyzer, Download JSON, Print PDF */}
                     <div className="flex gap-2 pt-1">
                       <button
                         onClick={() => onVerifyRecord(record)}
@@ -263,6 +361,14 @@ export const AuditLogView: React.FC<AuditLogViewProps> = ({ onVerifyRecord }) =>
                       >
                         <ShieldCheck className="w-3.5 h-3.5" />
                         Verify in Analyzer
+                      </button>
+                      <button
+                        onClick={() => handleOpenPdf(record)}
+                        className="py-1.5 px-3 bg-slate-800 hover:bg-slate-700 text-sky-400 border border-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1"
+                        title="Export Court Evidence PDF"
+                      >
+                        <Printer className="w-3.5 h-3.5" />
+                        PDF
                       </button>
                       <button
                         onClick={() => handleDownloadRecordJson(record)}
@@ -280,6 +386,15 @@ export const AuditLogView: React.FC<AuditLogViewProps> = ({ onVerifyRecord }) =>
           })
         )}
       </div>
+
+      {/* PDF Modal */}
+      {pdfRecord && (
+        <PdfEvidenceReport
+          record={pdfRecord.record}
+          imageUrl={pdfRecord.imageUrl}
+          onClose={() => setPdfRecord(null)}
+        />
+      )}
     </div>
   );
 };

@@ -27,6 +27,8 @@ export interface QualityGateResult {
   blurThreshold: number;
   glarePassed: boolean;
   glarePercent: number;
+  exposurePassed: boolean;
+  exposureScore: number;
   evenLightingPassed: boolean;
   lightingVariance: number;
   tiltPassed: boolean;
@@ -83,6 +85,7 @@ export interface SignedRecord {
     longitude: number;
     accuracy: number;
     low_accuracy_flag: boolean;
+    status_text?: string;
   };
   operator_id: string;
   device_id: string;

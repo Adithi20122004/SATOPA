@@ -156,7 +156,22 @@ export const QualityGateModal: React.FC<QualityGateModalProps> = ({
           </span>
         </div>
 
-        {/* 4. Glare / Saturation */}
+        {/* 4. Exposure Level */}
+        <div className="flex items-center justify-between py-1 border-b border-slate-800/80">
+          <div className="flex items-center gap-2">
+            {quality.exposurePassed ? (
+              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            ) : (
+              <XCircle className="w-4 h-4 text-rose-400" />
+            )}
+            <span className="text-slate-200">Exposure Level (Luma)</span>
+          </div>
+          <span className={`text-[11px] font-mono ${quality.exposurePassed ? 'text-emerald-400' : 'text-rose-400'}`}>
+            {quality.exposureScore} / 255 (35-230 range)
+          </span>
+        </div>
+
+        {/* 5. Glare / Saturation */}
         <div className="flex items-center justify-between py-1 border-b border-slate-800/80">
           <div className="flex items-center gap-2">
             {quality.glarePassed ? (
@@ -171,7 +186,7 @@ export const QualityGateModal: React.FC<QualityGateModalProps> = ({
           </span>
         </div>
 
-        {/* 5. Illumination Uniformity */}
+        {/* 6. Illumination Uniformity */}
         <div className="flex items-center justify-between py-1">
           <div className="flex items-center gap-2">
             {quality.evenLightingPassed ? (
@@ -277,7 +292,7 @@ export const QualityGateModal: React.FC<QualityGateModalProps> = ({
                 : 'bg-amber-600 hover:bg-amber-500 shadow-amber-600/30'
             }`}
           >
-            <span>Proceed to Analysis</span>
+            <span>{quality.allPassed ? 'Proceed to Analysis' : 'Proceed (Yields INCONCLUSIVE)'}</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>

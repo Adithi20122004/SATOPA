@@ -45,6 +45,7 @@ export const VerificationView: React.FC<VerificationViewProps> = ({ initialRecor
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [report, setReport] = useState<VerificationReport | null>(null);
   const [tamperApplied, setTamperApplied] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   // Load all records on mount
   useEffect(() => {
@@ -202,6 +203,7 @@ export const VerificationView: React.FC<VerificationViewProps> = ({ initialRecor
   const handleUploadJson = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setUploadError(null);
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
@@ -210,11 +212,12 @@ export const VerificationView: React.FC<VerificationViewProps> = ({ initialRecor
           setActiveRecord(parsed);
           setOriginalRecord(parsed);
           setTamperApplied(null);
+          setUploadError(null);
         } else {
-          alert('Invalid format: Missing required cryptographic fields');
+          setUploadError('Invalid format: File is missing required cryptographic fields (record_id, signature_der_hex)');
         }
-      } catch (err) {
-        alert('Invalid JSON file');
+      } catch {
+        setUploadError('Invalid JSON: Could not parse uploaded record file');
       }
     };
     reader.readAsText(file);
@@ -222,6 +225,21 @@ export const VerificationView: React.FC<VerificationViewProps> = ({ initialRecor
 
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-4 max-w-lg mx-auto w-full pb-8">
+      {uploadError && (
+        <div className="p-3 bg-rose-950/70 border border-rose-500/60 rounded-xl text-xs text-rose-200 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+            <span>{uploadError}</span>
+          </div>
+          <button
+            onClick={() => setUploadError(null)}
+            className="text-xs text-slate-400 hover:text-white ml-2"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Top Header Card */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
         <div className="flex items-center justify-between">
@@ -297,7 +315,7 @@ export const VerificationView: React.FC<VerificationViewProps> = ({ initialRecor
                     report.overallPass ? 'text-emerald-300' : 'text-rose-400'
                   }`}
                 >
-                  {report.overallPass ? 'VERIFICATION PASSED' : 'TAMPER DETECTED / FAILED'}
+                  {report.overallPass ? 'AUTHENTIC' : 'TAMPERED'}
                 </h3>
               </div>
               <p className="text-xs text-slate-300 mt-0.5">

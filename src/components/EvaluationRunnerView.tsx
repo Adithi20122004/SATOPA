@@ -244,6 +244,66 @@ export const EvaluationRunnerView: React.FC<EvaluationRunnerViewProps> = ({ kit 
             </div>
           </div>
 
+          {/* Visual Lighting Condition Chart (WITH vs WITHOUT) */}
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                <BarChart3 className="w-4 h-4 text-amber-400" />
+                Accuracy by Illuminant Regime (Chart)
+              </h3>
+              <span className="text-[10px] text-slate-400 font-mono">Surrogate / Synthetic Dataset</span>
+            </div>
+
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              Comparison of classification accuracy across 4 lighting conditions demonstrating how ambient color casts are neutralized by the $3 \times 3$ reference matrix.
+            </p>
+
+            <div className="space-y-3 pt-1">
+              {[
+                { name: 'Standard D65 (Daylight)', uncal: 100, cal: 100, samples: '2/2' },
+                { name: 'Warm Tungsten (3000K)', uncal: 50, cal: 100, samples: '2/2' },
+                { name: 'Cool Fluorescent', uncal: 50, cal: 100, samples: '2/2' },
+                { name: 'Dim / Low Light', uncal: 50, cal: 100, samples: '2/2' },
+              ].map((row) => (
+                <div key={row.name} className="space-y-1.5">
+                  <div className="flex justify-between text-xs font-medium">
+                    <span className="text-slate-200">{row.name}</span>
+                    <span className="text-[10px] font-mono text-slate-400">
+                      Uncal: {row.uncal}% vs Cal: <strong className="text-emerald-400">{row.cal}%</strong>
+                    </span>
+                  </div>
+
+                  {/* Dual Bar */}
+                  <div className="space-y-1">
+                    {/* Without Calibration Bar */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-[9px] font-mono text-rose-400 w-12 shrink-0">No Card</span>
+                      <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
+                        <div
+                          className="h-full bg-rose-500 rounded-full transition-all"
+                          style={{ width: `${row.uncal}%` }}
+                        />
+                      </div>
+                      <span className="text-[10px] font-mono text-slate-400 w-8 text-right">{row.uncal}%</span>
+                    </div>
+
+                    {/* With Calibration Bar */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-[9px] font-mono text-emerald-400 w-12 shrink-0">With Card</span>
+                      <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
+                        <div
+                          className="h-full bg-emerald-400 rounded-full transition-all"
+                          style={{ width: `${row.cal}%` }}
+                        />
+                      </div>
+                      <span className="text-[10px] font-mono text-emerald-400 font-bold w-8 text-right">{row.cal}%</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Confusion Matrix Table */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
             <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">

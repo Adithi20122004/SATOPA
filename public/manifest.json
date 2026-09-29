@@ -1,0 +1,18 @@
+{
+  "short_name": "MHA Field Companion",
+  "name": "MHA Field Companion - Drug Test Kit Analyzer",
+  "description": "Mobile-first PWA for field colorimetric drug-test kit analysis with CIELAB calibration, cryptographic audit trails, and tamper verification.",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "192x192 512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#020617",
+  "theme_color": "#0f172a",
+  "display": "standalone",
+  "orientation": "portrait"
+}

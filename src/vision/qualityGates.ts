@@ -57,6 +57,36 @@ export function computeLaplacianVariance(
 }
 
 /**
+ * Evaluates exposure level (mean luminance of the sampled region).
+ * Returns score 0-255. Valid range is 35 to 230.
+ */
+export function computeExposureScore(
+  imageData: ImageData,
+  sampleRect?: { x: number; y: number; w: number; h: number }
+): number {
+  const { data, width, height } = imageData;
+  const sx = Math.max(0, Math.floor(sampleRect?.x || 0));
+  const sy = Math.max(0, Math.floor(sampleRect?.y || 0));
+  const sw = Math.min(width - sx, Math.floor(sampleRect?.w || width));
+  const sh = Math.min(height - sy, Math.floor(sampleRect?.h || height));
+
+  let totalLuma = 0;
+  let count = 0;
+  const step = (sw >= 400 && sh >= 400) ? 2 : 1;
+
+  for (let y = sy; y < sy + sh; y += step) {
+    for (let x = sx; x < sx + sw; x += step) {
+      const idx = (y * width + x) * 4;
+      totalLuma += 0.2126 * data[idx] + 0.7152 * data[idx + 1] + 0.0722 * data[idx + 2];
+      count++;
+    }
+  }
+
+  if (count === 0) return 128;
+  return Math.round(totalLuma / count);
+}
+
+/**
  * Checks for specular glare / saturation clipping (RGB > 250 in all channels)
  */
 export function computeGlarePercent(
@@ -185,6 +215,8 @@ export function evaluateQualityGates(params: {
       blurThreshold: 80,
       glarePassed: false,
       glarePercent: 0,
+      exposurePassed: false,
+      exposureScore: 0,
       evenLightingPassed: false,
       lightingVariance: 0,
       tiltPassed: false,
@@ -209,14 +241,25 @@ export function evaluateQualityGates(params: {
     instructions.push(`Image is blurry (Sharpness: ${blurScore}/${blurThreshold}). Hold camera steady and tap to focus.`);
   }
 
-  // Gate 4: Specular Glare / Saturation Clipping (threshold: 4%)
+  // Gate 4: Exposure (mean luminance between 35 and 230)
+  const exposureScore = computeExposureScore(params.imageData, params.cardRect);
+  const exposurePassed = exposureScore >= 35 && exposureScore <= 230;
+  if (!exposurePassed) {
+    if (exposureScore < 35) {
+      instructions.push(`Underexposed frame (Luma: ${exposureScore}/255). Increase ambient lighting.`);
+    } else {
+      instructions.push(`Overexposed frame (Luma: ${exposureScore}/255). Reduce glare or direct harsh light.`);
+    }
+  }
+
+  // Gate 5: Specular Glare / Saturation Clipping (threshold: 4%)
   const glarePercent = Math.round(computeGlarePercent(params.imageData, params.resultWindowRect) * 10) / 10;
   const glarePassed = glarePercent <= 4.0;
   if (!glarePassed) {
     instructions.push(`Specular glare detected (${glarePercent}%). Move away from direct lighting or angle card slightly.`);
   }
 
-  // Gate 5: Uneven Lighting
+  // Gate 6: Uneven Lighting
   // Sample 4 quadrants
   const cr = params.cardRect || { x: 0, y: 0, w: params.imageData.width, h: params.imageData.height };
   const qw = Math.floor(cr.w / 3);
@@ -233,7 +276,7 @@ export function evaluateQualityGates(params: {
     instructions.push(`Uneven illumination across card (${lightingCheck.variancePercent}% variance). Use uniform ambient lighting.`);
   }
 
-  const allPassed = tiltPassed && blurPassed && glarePassed && evenLightingPassed;
+  const allPassed = tiltPassed && blurPassed && exposurePassed && glarePassed && evenLightingPassed;
 
   return {
     cardDetected: true,
@@ -242,6 +285,8 @@ export function evaluateQualityGates(params: {
     blurThreshold,
     glarePassed,
     glarePercent,
+    exposurePassed,
+    exposureScore,
     evenLightingPassed,
     lightingVariance: lightingCheck.variancePercent,
     tiltPassed,

@@ -110,7 +110,7 @@ export async function importPublicKeyHex(spkiHex: string): Promise<CryptoKey> {
  * Extracts payload fields for canonical signing (excluding signature and public key)
  */
 export function extractSignablePayload(record: SignedRecord): any {
-  const { signature_der_hex, public_key_spki_hex, ...signable } = record;
+  const { signature_der_hex: _sig, public_key_spki_hex: _pk, ...signable } = record;
   return signable;
 }
 
